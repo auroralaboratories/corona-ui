@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html ng-app="app">
+  <head>
+    <link rel="stylesheet" type="text/css" href="style.css"></link>
+
+    <script type="text/javascript" src="angular.min.js"></script>
+    <script type="text/javascript" src="panel.js"></script>
+  </head>
+
+  <body ng-controller="PanelController">
+    <div id="root">
+      <div class="workspace" ng-repeat="workspace in workspaces">
+        <div
+          ng-repeat="window in windows | filter:{
+            'workspace': workspace.number,
+            'all_workspaces': '!true'
+          }"
+          class="window"
+          ng-class="{active: window.active}"
+          ng-click="actionWindow(window.id, 'raise')"
+        >
+          <img ng-src="{{ window.icon }}?w=24&amp;h=24" height="24" width="24">
+        </div>
+        <span class="clearfix"></span>
+      </div>
+    </div>
+  </body>
+</html>

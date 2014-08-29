@@ -1,0 +1,38 @@
+html {
+  background-color: rgba(0, 0, 0, 0.20);
+  width:            100%;
+  height:           100%;
+}
+
+#root {
+  margin:           4px;
+  width:            100%;
+  height:           100%;
+}
+
+.clearfix {
+  clear:   both;
+}
+
+.workspace {
+  border:       1px solid rgba(255, 255, 255, 0.20);
+  height:       100%;
+  float:        left;
+  margin-left:  4px;
+  margin-right: 4px;
+}
+
+.workspace .window {
+  float:  left;
+  width:  40px;
+  height: 24px;
+  text-align: center;
+}
+
+.workspace .window > img {
+  opacity: 0.80;
+}
+
+.workspace .window.active{
+  background-color: rgba(255, 255, 255, 0.20);
+}
