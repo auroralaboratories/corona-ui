@@ -3,7 +3,7 @@ A transparent, borderless Webkit frame (and not much else)
 
 ## Overview
 
-A "sprinkle" is nothing more than a very tiny web browser designed to load a single-page web application.  These applications will, in turn, talk to the [Sprinkles API](https://github.com/ghetzel/sprinkles-ui) for performing desktop and system management tasks.  Collectively, these tasks form the necessary interactions and behaviors of using a modern Linux graphical environment.
+A "sprinkle" is nothing more than a very tiny web browser designed to load a single-page web application.  These applications will, in turn, talk to the [Sprinkles API](https://github.com/ghetzel/sprinkles-api) for performing desktop and system management tasks.  Collectively, these tasks form the necessary interactions and behaviors of using a modern Linux graphical environment.
 
 ## Command Line Usage
 
