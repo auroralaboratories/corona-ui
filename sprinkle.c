@@ -156,7 +156,7 @@ int main(int argc, char* argv[]) {
   if(argc > 1){
     webkit_web_view_load_uri(web_view, argv[1]);
   }else{
-    g_print("Must specify an application name");
+    g_print("Must specify an application name\n");
     return 127;
   }
 
