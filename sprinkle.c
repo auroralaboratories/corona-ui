@@ -3,21 +3,93 @@
 #include <cairo.h>
 #include <webkit/webkit.h>
 
+#define SP_WM_TYPE_DESKTOP  "desktop"
+#define SP_WM_TYPE_DOCK     "dock"
+
+#define SP_WM_LAYER_BELOW   "below"
+#define SP_WM_LAYER_NORMAL  "normal"
+#define SP_WM_LAYER_ABOVE   "above"
+
+#define SP_WM_DOCK_TOP      "top"
+#define SP_WM_DOCK_LEFT     "left"
+#define SP_WM_DOCK_BOTTOM   "bottom"
+#define SP_WM_DOCK_RIGHT    "right"
+
+#define SP_WM_ALIGN_START   "start"
+#define SP_WM_ALIGN_MIDDLE  "middle"
+#define SP_WM_ALIGN_END     "end"
+
 gboolean supports_alpha = FALSE;
 
 static void screen_changed(GtkWidget *widget, GdkScreen *old_screen, gpointer user_data);
 static gboolean expose(GtkWidget *widget, GdkEventExpose *event, gpointer user_data);
 static void clicked(GtkWindow *win, GdkEventButton *event, gpointer user_data);
+void sprinkle_apply_flags(GtkWindow *window);
 
 static void destroy_cb(GtkWidget* widget, gpointer data) {
   gtk_main_quit();
 }
 
+static gboolean start_hidden  = FALSE;
+static gboolean show_in_panel = FALSE;
+static gchar*   wm_type       = 0;
+static gchar*   wm_layer      = SP_WM_LAYER_NORMAL;
+static guint    wm_width      = 0;
+static guint    wm_height     = 0;
+static gint     wm_xpos       = 0;
+static gint     wm_ypos       = 0;
+static gchar*   wm_dock       = NULL;
+static gchar*   wm_align      = NULL;
+static gboolean wm_autostrut  = FALSE;
+
+static GOptionEntry entries[] =
+{
+  { "hide",          0,   0, G_OPTION_ARG_NONE,   &start_hidden,  "Hide the window on startup, leaving it up to the application being launched to show it when it is ready", NULL },
+  { "show-in-panel", 0,   0, G_OPTION_ARG_NONE,   &show_in_panel, "Show the window's icon in the system panel", NULL },
+  { "type",          'T', 0, G_OPTION_ARG_STRING, &wm_type,       "What type of window should this be flagged as (desktop, dock)", NULL },
+  { "layer",         'L', 0, G_OPTION_ARG_STRING, &wm_layer,      "Which layer of the window stacking order the window should be ordered in", SP_WM_LAYER_NORMAL },
+  { "width",         'w', 0, G_OPTION_ARG_INT,    &wm_width,      "Initial width of the window, in pixels", NULL },
+  { "height",        'h', 0, G_OPTION_ARG_INT,    &wm_height,     "Initial height of the window, in pixels", NULL },
+  { "xpos",          'X', 0, G_OPTION_ARG_INT,    &wm_xpos,       "The X-coordinate at which the window should be placed initially", NULL },
+  { "ypos",          'Y', 0, G_OPTION_ARG_INT,    &wm_ypos,       "The Y-coordinate at which the window should be placed initially", NULL },
+  { "dock",          'D', 0, G_OPTION_ARG_STRING, &wm_dock,       "A shortcut for pinning the window to a particular edge of the screen (top, left, bottom, right)", NULL},
+  { "align",         'A', 0, G_OPTION_ARG_STRING, &wm_align,      "A shortcut for aligning the window within the axis the window is docked to (start, middle, end)", NULL},
+  { "reserve",       'R', 0, G_OPTION_ARG_NONE,   &wm_autostrut,  "Have this window reserve its dimensions so that other windows won't maximize over it", NULL},
+  { NULL }
+};
+
 int main(int argc, char* argv[]) {
-  gtk_init(&argc, &argv);
+  GError *error = NULL;
+  GOptionContext *context;
+
+  context = g_option_context_new("- lightweight webkit browser");
+  g_option_context_add_main_entries(context, entries, NULL);
+  g_option_context_add_group(context, gtk_get_option_group(TRUE));
+  if (!g_option_context_parse(context, &argc, &argv, &error)){
+    g_print("option parsing failed: %s\n", error->message);
+    return 1;
+  }
+
+//  gtk_init(&argc, &argv);
+
+  g_print("Initializing...\n");
+  printf("[%s] = %d\n", "hide",              start_hidden);
+  printf("[%s] = %d\n", "show-in-panel",     show_in_panel);
+  printf("[%s] = %s\n", "layer",             wm_layer);
+  printf("[dimensions] = %dx%d @ (%d,%d)\n", wm_width, wm_height, wm_xpos, wm_ypos);
+  printf("[%s] = %s\n", "dock",              wm_dock);
+  printf("[%s] = %s\n", "align",             wm_align);
+  printf("[%s] = %d\n", "reserve",           wm_autostrut);
 
 //create main window and Webkit widget
   GtkWidget           *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+
+  gtk_window_set_default_size(GTK_WINDOW(window), 512, 512);
+
+
+//apply the WM flags to the window
+  sprinkle_apply_flags(GTK_WINDOW(window));
+
   WebKitWebView     *web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
   WebKitWebSettings *settings = webkit_web_settings_new();
 
@@ -25,7 +97,6 @@ int main(int argc, char* argv[]) {
   //gtk_window_maximize(GTK_WINDOW(window));
 
   // set intitial size
-  gtk_window_set_default_size(GTK_WINDOW(window), 512, 512);
 
 
   // pin to desktop
@@ -140,4 +211,45 @@ static gboolean expose(GtkWidget *widget, GdkEventExpose *event, gpointer userda
     cairo_destroy(cr);
 
     return FALSE;
+}
+
+
+void sprinkle_apply_flags(GtkWindow *window) {
+  GdkWindow *gdk_window = gtk_widget_get_window(GTK_WIDGET(window));
+
+  if(start_hidden){
+    g_print("Hiding window\n");
+    gtk_widget_hide(GTK_WIDGET(window));
+  }
+
+  if(show_in_panel){
+    gtk_window_set_skip_taskbar_hint(window, FALSE);
+    gtk_window_set_skip_pager_hint(window, FALSE);
+  }else{
+    gtk_window_set_skip_taskbar_hint(window, TRUE);
+    gtk_window_set_skip_pager_hint(window, TRUE);
+  }
+
+//TYPE
+  if(wm_type == SP_WM_TYPE_DESKTOP){
+    gtk_window_set_type_hint(window, GDK_WINDOW_TYPE_HINT_DESKTOP);
+  }else if(wm_type == SP_WM_TYPE_DOCK){
+    gtk_window_set_type_hint(window, GDK_WINDOW_TYPE_HINT_DOCK);
+  }
+
+//LAYER
+  if(wm_layer == SP_WM_LAYER_BELOW){
+    g_print("Setting layer: below\n");
+    gdk_window_set_keep_below(gdk_window, TRUE);
+  }else if(wm_layer == SP_WM_LAYER_ABOVE){
+    gdk_window_set_keep_above(gdk_window, TRUE);
+  }
+
+  if(wm_width && wm_height) {
+    gtk_window_resize(window, wm_width, wm_height);
+  }
+
+  if(wm_xpos && wm_ypos) {
+    gtk_window_move(window, wm_xpos, wm_ypos);
+  }
 }
