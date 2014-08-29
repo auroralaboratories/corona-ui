@@ -156,7 +156,8 @@ int main(int argc, char* argv[]) {
   if(argc > 1){
     webkit_web_view_load_uri(web_view, argv[1]);
   }else{
-    webkit_web_view_load_uri(web_view, "about:blank");
+    g_print("Must specify an application name");
+    return 127;
   }
 
   // focus the window
