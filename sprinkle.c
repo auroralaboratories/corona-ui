@@ -25,6 +25,14 @@ gboolean supports_alpha = FALSE;
 static void screen_changed(GtkWidget *widget, GdkScreen *old_screen, gpointer user_data);
 static gboolean expose(GtkWidget *widget, GdkEventExpose *event, gpointer user_data);
 static void clicked(GtkWindow *win, GdkEventButton *event, gpointer user_data);
+static gboolean navigate(
+  WebKitWebView             *web_view,
+  WebKitWebFrame            *frame,
+  WebKitNetworkRequest      *request,
+  WebKitWebNavigationAction *navigation_action,
+  WebKitWebPolicyDecision   *policy_decision,
+  gpointer                   user_data);
+
 void sprinkle_apply_flags(GtkWindow *window);
 
 static void destroy_cb(GtkWidget* widget, gpointer data) {
@@ -110,6 +118,8 @@ int main(int argc, char* argv[]) {
   // callback(s): handle cairo double buffering (this is what enables the WEBKIT WIDGET to be transparent)
   g_signal_connect(web_view, "expose-event",   G_CALLBACK(expose), NULL);
   g_signal_connect(web_view, "screen-changed", G_CALLBACK(screen_changed), NULL);
+
+  g_signal_connect(web_view, "navigation-policy-decision-requested", G_CALLBACK(navigate), NULL);
 
   // disable titlebar and border
   gtk_window_set_decorated(GTK_WINDOW(window), FALSE);
@@ -215,6 +225,19 @@ static gboolean expose(GtkWidget *widget, GdkEventExpose *event, gpointer userda
     return FALSE;
 }
 
+static gboolean navigate(
+  WebKitWebView             *web_view,
+  WebKitWebFrame            *frame,
+  WebKitNetworkRequest      *request,
+  WebKitWebNavigationAction *navigation_action,
+  WebKitWebPolicyDecision   *policy_decision,
+  gpointer                   user_data)
+{
+  //webkit_network_request_set_uri(request, "http://www.google.com");
+
+  g_print("URI: %s\n", webkit_network_request_get_uri(request));
+  return FALSE;
+}
 
 void sprinkle_apply_flags(GtkWindow *window) {
   GdkWindow *gdk_window = gtk_widget_get_window(GTK_WIDGET(window));
@@ -268,10 +291,10 @@ void sprinkle_apply_flags(GtkWindow *window) {
     g_print("Screen is %dx%d\n", gdk_screen_get_width(gdk_screen), gdk_screen_get_height(gdk_screen));
 
 //  set Y-coordinates
-    if(wm_dock == SP_WM_DOCK_BOTTOM){
+    if(!strcmp(wm_dock,SP_WM_DOCK_BOTTOM)){
       y = gdk_screen_get_height(gdk_screen) - window_h;
 
-    }else if(wm_dock == SP_WM_DOCK_RIGHT){
+    }else if(!strcmp(wm_dock,SP_WM_DOCK_RIGHT)){
       y = gdk_screen_get_width(gdk_screen) - window_w;
     }
 
