@@ -219,7 +219,6 @@ void sprinkle_apply_flags(GtkWindow *window) {
   GdkWindow *gdk_window = gtk_widget_get_window(GTK_WIDGET(window));
 
   if(start_hidden){
-    g_print("Hiding window\n");
     gtk_widget_hide(GTK_WIDGET(window));
   }
 
@@ -240,7 +239,6 @@ void sprinkle_apply_flags(GtkWindow *window) {
 
 //LAYER
   if(wm_layer == SP_WM_LAYER_BELOW){
-    g_print("Setting layer: below\n");
     gdk_window_set_keep_below(gdk_window, TRUE);
   }else if(wm_layer == SP_WM_LAYER_ABOVE){
     gdk_window_set_keep_above(gdk_window, TRUE);
@@ -252,5 +250,40 @@ void sprinkle_apply_flags(GtkWindow *window) {
 
   if(wm_xpos && wm_ypos) {
     gtk_window_move(window, wm_xpos, wm_ypos);
+  }else{
+    GdkScreen *gdk_screen = gtk_window_get_screen(window);
+    gint x, y, window_w, window_h = 01;
+
+    gtk_window_get_size(window, &window_w, &window_h);
+
+    g_print("Window current size: %dx%d\n", window_w, window_h);
+    g_print("Screen is %dx%d\n", gdk_screen_get_width(gdk_screen), gdk_screen_get_height(gdk_screen));
+
+//  set Y-coordinates
+    if(wm_dock == SP_WM_DOCK_BOTTOM){
+      y = gdk_screen_get_height(gdk_screen) - window_h;
+    }else if(wm_dock == SP_WM_DOCK_RIGHT){
+      y = gdk_screen_get_width(gdk_screen) - window_w;
+    }
+
+//  set X-coordinates
+    if(!strcmp(wm_dock, SP_WM_DOCK_TOP) || !strcmp(wm_dock, SP_WM_DOCK_BOTTOM)){
+      if(!strcmp(wm_align, SP_WM_ALIGN_MIDDLE)){
+        x = (gdk_screen_get_width(gdk_screen) / 2.0) - (window_w / 2.0);
+      }else if(!strcmp(wm_align,SP_WM_ALIGN_END)){
+        x = gdk_screen_get_width(gdk_screen) - window_w;
+      }
+    }else if(!strcmp(wm_dock, SP_WM_DOCK_LEFT) || !strcmp(wm_dock, SP_WM_DOCK_RIGHT)){
+      if(!strcmp(wm_align, SP_WM_ALIGN_MIDDLE)){
+        x = (gdk_screen_get_height(gdk_screen) / 2.0) - (window_h / 2.0);
+      }else if(!strcmp(wm_align, SP_WM_ALIGN_END)){
+        x = gdk_screen_get_height(gdk_screen) - window_h;
+      }
+    }
+
+    g_print("Moving window to %d, %d\n", x, y);
+
+    gtk_window_move(window, x, y);
   }
+
 }
