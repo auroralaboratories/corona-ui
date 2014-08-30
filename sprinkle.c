@@ -50,6 +50,7 @@ static gint     wm_ypos       = 0;
 static gchar*   wm_dock       = NULL;
 static gchar*   wm_align      = NULL;
 static gboolean wm_autostrut  = FALSE;
+static gboolean wm_decorator  = FALSE;
 
 static GOptionEntry entries[] =
 {
@@ -64,6 +65,7 @@ static GOptionEntry entries[] =
   { "dock",          'D', 0, G_OPTION_ARG_STRING, &wm_dock,       "A shortcut for pinning the window to a particular edge of the screen (top, left, bottom, right)", NULL},
   { "align",         'A', 0, G_OPTION_ARG_STRING, &wm_align,      "A shortcut for aligning the window within the axis the window is docked to (start, middle, end)", NULL},
   { "reserve",       'R', 0, G_OPTION_ARG_NONE,   &wm_autostrut,  "Have this window reserve its dimensions so that other windows won't maximize over it", NULL},
+  { "decorator",     'E', 0, G_OPTION_ARG_NONE,   &wm_decorator,  "Let window display window manager decorations", NULL},
   { NULL }
 };
 
@@ -89,6 +91,7 @@ int main(int argc, char* argv[]) {
   printf("[%s] = %s\n", "dock",              wm_dock);
   printf("[%s] = %s\n", "align",             wm_align);
   printf("[%s] = %d\n", "reserve",           wm_autostrut);
+  printf("[%s] = %d\n", "decorator",         wm_decorator);
 
 //create main window and Webkit widget
   GtkWidget           *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -122,7 +125,7 @@ int main(int argc, char* argv[]) {
   g_signal_connect(web_view, "navigation-policy-decision-requested", G_CALLBACK(navigate), NULL);
 
   // disable titlebar and border
-  gtk_window_set_decorated(GTK_WINDOW(window), FALSE);
+  gtk_window_set_decorated(GTK_WINDOW(window), wm_decorator);
 
   // do this for reasons
   gtk_widget_set_app_paintable(window, TRUE);
