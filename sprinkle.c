@@ -1,6 +1,7 @@
 #include <gtk/gtk.h>
 #include <gdk/gdkscreen.h>
 #include <cairo.h>
+#include <string.h>
 #include <webkit/webkit.h>
 
 #define SP_WM_TYPE_DESKTOP  "desktop"
@@ -84,11 +85,7 @@ int main(int argc, char* argv[]) {
 //create main window and Webkit widget
   GtkWidget           *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
-  gtk_window_set_default_size(GTK_WINDOW(window), 512, 512);
-
-
-//apply the WM flags to the window
-  sprinkle_apply_flags(GTK_WINDOW(window));
+  //gtk_window_set_default_size(GTK_WINDOW(window), 512, 512);
 
   WebKitWebView     *web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
   WebKitWebSettings *settings = webkit_web_settings_new();
@@ -169,6 +166,10 @@ int main(int argc, char* argv[]) {
   // show the window
   gtk_widget_show_all(window);
 
+//apply the WM flags to the window
+  sprinkle_apply_flags(GTK_WINDOW(window));
+
+
   // enter mainloop (blocks until destroy)
   gtk_main();
 
@@ -217,6 +218,8 @@ static gboolean expose(GtkWidget *widget, GdkEventExpose *event, gpointer userda
 
 void sprinkle_apply_flags(GtkWindow *window) {
   GdkWindow *gdk_window = gtk_widget_get_window(GTK_WIDGET(window));
+  GdkScreen *gdk_screen = gtk_window_get_screen(window);
+  GdkWindow *gdk_root   = gdk_screen_get_root_window(gdk_screen);
 
   if(start_hidden){
     gtk_widget_hide(GTK_WIDGET(window));
@@ -244,17 +247,22 @@ void sprinkle_apply_flags(GtkWindow *window) {
     gdk_window_set_keep_above(gdk_window, TRUE);
   }
 
+  gint window_w = 0;
+  gint window_h = 0;
+
   if(wm_width && wm_height) {
-    gtk_window_resize(window, wm_width, wm_height);
+    window_w = wm_width;
+    window_h = wm_height;
+    gdk_window_resize(gdk_window, wm_width, wm_height);
+  }else{
+    gdk_window_get_geometry(gdk_window, NULL, NULL, &window_w, &window_h, NULL);
   }
 
   if(wm_xpos && wm_ypos) {
-    gtk_window_move(window, wm_xpos, wm_ypos);
+    gdk_window_move(gdk_window, wm_xpos, wm_ypos);
   }else{
-    GdkScreen *gdk_screen = gtk_window_get_screen(window);
-    gint x, y, window_w, window_h = 01;
-
-    gtk_window_get_size(window, &window_w, &window_h);
+    gint x = 0;
+    gint y = 0;
 
     g_print("Window current size: %dx%d\n", window_w, window_h);
     g_print("Screen is %dx%d\n", gdk_screen_get_width(gdk_screen), gdk_screen_get_height(gdk_screen));
@@ -262,6 +270,7 @@ void sprinkle_apply_flags(GtkWindow *window) {
 //  set Y-coordinates
     if(wm_dock == SP_WM_DOCK_BOTTOM){
       y = gdk_screen_get_height(gdk_screen) - window_h;
+
     }else if(wm_dock == SP_WM_DOCK_RIGHT){
       y = gdk_screen_get_width(gdk_screen) - window_w;
     }
@@ -283,7 +292,47 @@ void sprinkle_apply_flags(GtkWindow *window) {
 
     g_print("Moving window to %d, %d\n", x, y);
 
-    gtk_window_move(window, x, y);
+    gdk_window_move(gdk_window, x, y);
   }
 
+  gint window_x = 0;
+  gint window_y = 0;
+  gdk_window_get_geometry(gdk_window, &window_x, &window_y, NULL, NULL, NULL);
+
+//RESERVE
+  if(wm_autostrut){
+    GdkAtom atom;
+    GdkAtom cardinal;
+    unsigned long strut[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
+    
+    if(!strcmp(wm_dock, SP_WM_DOCK_TOP)){
+      strut[2]  = window_h;            // strut top
+      strut[8]  = window_x;            // top_start_x
+      strut[9]  = window_x + window_w; // top_end_x
+    }else if(!strcmp(wm_dock, SP_WM_DOCK_BOTTOM)){
+      strut[3]  = window_h;            // strut bottom
+      strut[10] = window_x;            // bottom_start_x
+      strut[11] = window_x + window_w; // bottom_end_x
+    }else if(!strcmp(wm_dock, SP_WM_DOCK_LEFT)){
+      strut[0]  = window_w;            // strut left
+      strut[4]  = window_y;            // left_start_y
+      strut[5]  = window_y + window_h; // left_end_y
+    }else if(!strcmp(wm_dock, SP_WM_DOCK_RIGHT)){
+      strut[1]  = window_w;            // strut right
+      strut[6]  = window_y;            // right_start_y
+      strut[7]  = window_y + window_h; // right_end_y
+    }
+
+    cardinal = gdk_atom_intern("CARDINAL", FALSE);
+    atom = gdk_atom_intern("_NET_WM_STRUT", FALSE);
+    
+    gdk_property_change(gdk_window, atom, cardinal, 32, GDK_PROP_MODE_REPLACE,
+        (guchar*)strut, 4);
+    
+    atom = gdk_atom_intern("_NET_WM_STRUT_PARTIAL", FALSE);
+    gdk_property_change(gdk_window, atom, cardinal, 32, GDK_PROP_MODE_REPLACE,
+        (guchar*)strut, 12);
+
+    gdk_window_move(gdk_window, window_x, window_y);    
+  }
 }
