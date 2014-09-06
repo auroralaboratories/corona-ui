@@ -212,7 +212,7 @@ int main(int argc, char* argv[]) {
   gtk_widget_show_all(window);
 
 //apply the WM flags to the window
-  //sprinkle_apply_flags(GTK_WINDOW(window));
+  sprinkle_apply_flags(GTK_WINDOW(window));
 
 
   // enter mainloop (blocks until destroy)
@@ -357,6 +357,8 @@ void sprinkle_apply_flags(GtkWindow *window) {
 
   gint window_w = 0;
   gint window_h = 0;
+  gint window_x = 0;
+  gint window_y = 0;
 
   if(wm_width && wm_height) {
     window_w = wm_width;
@@ -368,43 +370,42 @@ void sprinkle_apply_flags(GtkWindow *window) {
 
   if(wm_xpos && wm_ypos) {
     gdk_window_move(gdk_window, wm_xpos, wm_ypos);
-  }else{
-    gint x = 0;
-    gint y = 0;
-
+  }else if(wm_dock){
     g_print("Window current size: %dx%d\n", window_w, window_h);
     g_print("Screen is %dx%d\n", gdk_screen_get_width(gdk_screen), gdk_screen_get_height(gdk_screen));
 
 //  set Y-coordinates
     if(!strcmp(wm_dock,SP_WM_DOCK_BOTTOM)){
-      y = gdk_screen_get_height(gdk_screen) - window_h;
+      window_y = gdk_screen_get_height(gdk_screen) - window_h;
 
     }else if(!strcmp(wm_dock,SP_WM_DOCK_RIGHT)){
-      y = gdk_screen_get_width(gdk_screen) - window_w;
+      window_y = gdk_screen_get_width(gdk_screen) - window_w;
     }
 
 //  set X-coordinates
     if(!strcmp(wm_dock, SP_WM_DOCK_TOP) || !strcmp(wm_dock, SP_WM_DOCK_BOTTOM)){
-      if(!strcmp(wm_align, SP_WM_ALIGN_MIDDLE)){
-        x = (gdk_screen_get_width(gdk_screen) / 2.0) - (window_w / 2.0);
-      }else if(!strcmp(wm_align,SP_WM_ALIGN_END)){
-        x = gdk_screen_get_width(gdk_screen) - window_w;
+      if(wm_align){
+        if(!strcmp(wm_align, SP_WM_ALIGN_MIDDLE)){
+          window_x = (gdk_screen_get_width(gdk_screen) / 2.0) - (window_w / 2.0);
+        }else if(!strcmp(wm_align,SP_WM_ALIGN_END)){
+          window_x = gdk_screen_get_width(gdk_screen) - window_w;
+        }
       }
     }else if(!strcmp(wm_dock, SP_WM_DOCK_LEFT) || !strcmp(wm_dock, SP_WM_DOCK_RIGHT)){
-      if(!strcmp(wm_align, SP_WM_ALIGN_MIDDLE)){
-        x = (gdk_screen_get_height(gdk_screen) / 2.0) - (window_h / 2.0);
-      }else if(!strcmp(wm_align, SP_WM_ALIGN_END)){
-        x = gdk_screen_get_height(gdk_screen) - window_h;
+      if(wm_align){
+        if(!strcmp(wm_align, SP_WM_ALIGN_MIDDLE)){
+          window_x = (gdk_screen_get_height(gdk_screen) / 2.0) - (window_h / 2.0);
+        }else if(!strcmp(wm_align, SP_WM_ALIGN_END)){
+          window_x = gdk_screen_get_height(gdk_screen) - window_h;
+        }
       }
     }
 
-    g_print("Moving window to %d, %d\n", x, y);
+    g_print("Moving window to %d, %d\n", window_x, window_y);
 
-    gdk_window_move(gdk_window, x, y);
+    gdk_window_move(gdk_window, window_x, window_y);
   }
 
-  gint window_x = 0;
-  gint window_y = 0;
   gdk_window_get_geometry(gdk_window, &window_x, &window_y, NULL, NULL, NULL);
 
 //RESERVE
