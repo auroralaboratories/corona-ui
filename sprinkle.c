@@ -54,10 +54,10 @@ static gboolean  start_hidden  = FALSE;
 static gboolean  show_in_panel = FALSE;
 static gchar*    wm_type       = 0;
 static gchar*    wm_layer      = SP_WM_LAYER_NORMAL;
-static guint     wm_width      = 0;
-static guint     wm_height     = 0;
-static gint      wm_xpos       = 0;
-static gint      wm_ypos       = 0;
+static gint      wm_width      = -1;
+static gint      wm_height     = -1;
+static gint      wm_xpos       = -1;
+static gint      wm_ypos       = -1;
 static gchar*    wm_dock       = NULL;
 static gchar*    wm_align      = NULL;
 static gboolean  wm_autostrut  = FALSE;
@@ -71,10 +71,10 @@ static GOptionEntry entries[] =
   { "show-in-panel", 0,   0, G_OPTION_ARG_NONE,   &show_in_panel, "Show the window's icon in the system panel", NULL },
   { "type",          'T', 0, G_OPTION_ARG_STRING, &wm_type,       "What type of window should this be flagged as (desktop, dock)", NULL },
   { "layer",         'L', 0, G_OPTION_ARG_STRING, &wm_layer,      "Which layer of the window stacking order the window should be ordered in", SP_WM_LAYER_NORMAL },
-  { "width",         'w', 0, G_OPTION_ARG_INT,    &wm_width,      "Initial width of the window, in pixels", NULL },
-  { "height",        'h', 0, G_OPTION_ARG_INT,    &wm_height,     "Initial height of the window, in pixels", NULL },
-  { "xpos",          'X', 0, G_OPTION_ARG_INT,    &wm_xpos,       "The X-coordinate at which the window should be placed initially", NULL },
-  { "ypos",          'Y', 0, G_OPTION_ARG_INT,    &wm_ypos,       "The Y-coordinate at which the window should be placed initially", NULL },
+  { "width",         'w', 0, G_OPTION_ARG_INT   , &wm_width,      "Initial width of the window, in pixels", NULL },
+  { "height",        'h', 0, G_OPTION_ARG_INT   , &wm_height,     "Initial height of the window, in pixels", NULL },
+  { "xpos",          'X', 0, G_OPTION_ARG_INT   , &wm_xpos,       "The X-coordinate at which the window should be placed initially", NULL },
+  { "ypos",          'Y', 0, G_OPTION_ARG_INT   , &wm_ypos,       "The Y-coordinate at which the window should be placed initially", NULL },
   { "dock",          'D', 0, G_OPTION_ARG_STRING, &wm_dock,       "A shortcut for pinning the window to a particular edge of the screen (top, left, bottom, right)", NULL},
   { "align",         'A', 0, G_OPTION_ARG_STRING, &wm_align,      "A shortcut for aligning the window within the axis the window is docked to (start, middle, end)", NULL},
   { "reserve",       'R', 0, G_OPTION_ARG_NONE,   &wm_autostrut,  "Have this window reserve its dimensions so that other windows won't maximize over it", NULL},
@@ -368,7 +368,7 @@ void sprinkle_apply_flags(GtkWindow *window) {
     gdk_window_get_geometry(gdk_window, NULL, NULL, &window_w, &window_h, NULL);
   }
 
-  if(wm_xpos && wm_ypos) {
+  if(wm_xpos >= 0 && wm_ypos >= 0) {
     gdk_window_move(gdk_window, wm_xpos, wm_ypos);
   }else if(wm_dock){
     g_print("Window current size: %dx%d\n", window_w, window_h);
