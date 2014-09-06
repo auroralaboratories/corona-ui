@@ -1,9 +1,13 @@
-#include <gtk/gtk.h>
-#include <gdk/gdkscreen.h>
 #include <cairo.h>
+#include <gdk/gdkscreen.h>
+#include <gtk/gtk.h>
 #include <math.h>
 #include <pixman.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <webkit/webkit.h>
 
 #define SP_WM_TYPE_DESKTOP  "desktop"
@@ -24,6 +28,9 @@
 
 gboolean supports_alpha = FALSE;
 
+static gchar* sprinkles_find_application_by_name(gchar *name);
+static gchar* sprinkles_application_path(gchar *path, gchar *name);
+static gchar* sprinkles_path_suffix_index(gchar *uri);
 static void screen_changed(GtkWidget *widget, GdkScreen *old_screen, gpointer user_data);
 static gboolean expose(GtkWidget *widget, GdkEventExpose *event, gpointer user_data);
 static void clicked(GtkWindow *win, GdkEventButton *event, gpointer user_data);
@@ -43,18 +50,20 @@ static void destroy_cb(GtkWidget* widget, gpointer data) {
   gtk_main_quit();
 }
 
-static gboolean start_hidden  = FALSE;
-static gboolean show_in_panel = FALSE;
-static gchar*   wm_type       = 0;
-static gchar*   wm_layer      = SP_WM_LAYER_NORMAL;
-static guint    wm_width      = 0;
-static guint    wm_height     = 0;
-static gint     wm_xpos       = 0;
-static gint     wm_ypos       = 0;
-static gchar*   wm_dock       = NULL;
-static gchar*   wm_align      = NULL;
-static gboolean wm_autostrut  = FALSE;
-static gboolean wm_decorator  = FALSE;
+static gboolean  start_hidden  = FALSE;
+static gboolean  show_in_panel = FALSE;
+static gchar*    wm_type       = 0;
+static gchar*    wm_layer      = SP_WM_LAYER_NORMAL;
+static guint     wm_width      = 0;
+static guint     wm_height     = 0;
+static gint      wm_xpos       = 0;
+static gint      wm_ypos       = 0;
+static gchar*    wm_dock       = NULL;
+static gchar*    wm_align      = NULL;
+static gboolean  wm_autostrut  = FALSE;
+static gboolean  wm_decorator  = FALSE;
+static gchar*    sp_system     = "/etc/sprinkles/apps";
+static gchar*    sp_user       = "~/.sprinkles/apps";
 
 static GOptionEntry entries[] =
 {
@@ -168,7 +177,26 @@ int main(int argc, char* argv[]) {
 
   // first CLI argument is the page to load, otherwise go to blank
   if(argc > 1){
-    webkit_web_view_load_uri(web_view, argv[1]);
+    gchar *uri = g_strdup(argv[1]);
+
+    if(!g_str_has_prefix(uri, "http") && !g_str_has_prefix(uri, "file")){
+      if(g_str_has_prefix(uri, "/")){
+        uri = sprinkles_path_suffix_index(uri);
+      }else{
+        uri = sprinkles_find_application_by_name(uri);
+
+        if(uri == NULL){
+          g_print("Could not find application '%s'\n", argv[1]);
+          return 64;
+        }
+
+        uri = sprinkles_path_suffix_index(uri);
+      }
+
+      uri = g_strdup_printf("file://%s", uri);
+    }
+
+    webkit_web_view_load_uri(web_view, uri);
   }else{
     g_print("Must specify an application name\n");
     return 127;
@@ -193,6 +221,55 @@ int main(int argc, char* argv[]) {
   return 0;
 }
 
+static gchar* sprinkles_find_application_by_name(gchar *name){
+  gchar *rv;
+
+  if((rv = sprinkles_application_path("./apps", name)) != NULL){
+    return rv;
+  }
+
+  if((rv = sprinkles_application_path(sp_user, name)) != NULL){
+    return rv;
+  }
+
+  if((rv = sprinkles_application_path(sp_system, name)) != NULL){
+    return rv;
+  }
+
+  return NULL;
+}
+
+static gchar* sprinkles_application_path(gchar *path, gchar *name){
+  struct stat buffer;
+  gchar       *exp_path = NULL;
+  gchar       *filename = NULL;
+
+  exp_path = realpath(path, NULL);
+
+  if(exp_path == NULL){
+    filename = g_strdup_printf("%s/%s", path, name);
+  }else{
+    filename = g_strdup_printf("%s/%s", exp_path, name);
+  }
+
+  g_print("Search %s\n", filename);
+
+  if (stat(filename, &buffer) == 0){
+    g_print("File found! %s\n", filename);
+    return filename;
+  }
+
+  return NULL;
+}
+
+
+static gchar* sprinkles_path_suffix_index(gchar *uri){
+  if(!g_str_has_suffix(uri, ".html")){
+    uri = g_strconcat(uri, "/index.html", NULL);
+  }
+
+  return uri;
+}
 
 static void screen_changed(GtkWidget *widget, GdkScreen *old_screen, gpointer userdata)
 {
@@ -243,8 +320,6 @@ static gboolean navigate(
   WebKitWebPolicyDecision   *policy_decision,
   gpointer                   user_data)
 {
-  //webkit_network_request_set_uri(request, "http://www.google.com");
-
   g_print("URI: %s\n", webkit_network_request_get_uri(request));
   return FALSE;
 }
