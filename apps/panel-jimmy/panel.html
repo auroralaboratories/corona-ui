@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+  </head>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+  <style>
+    html, body{
+      margin: 0;
+      height: 100%;
+      width:  100%;
+      background-color: rgba(0, 0, 0, 0.0);
+    }
+
+    .panel {
+      margin: 0 auto;
+      width: 100%;
+      height: 24px;
+      background: -webkit-linear-gradient(top, rgba(250,250,250,0.9) 0%,
+      rgba(206,206,206,0.9) 100%);
+      border-top: 1px solid rgba(255,255,255,0.99);
+      border-bottom: 1px solid rgba(0,0,0,0.5);
+
+    }
+    /*Search*/
+    .search { 
+      padding:0px 0px 0px 6px;
+      margin:1px 1px 1px 1px !important;
+      background: rgba(100, 100, 100, 0.2);
+      height: 19px;
+      color: rgb(0,0,0);
+      outline: none;
+      width: 100%;
+    }
+    ::-webkit-input-placeholder {
+      color: rgba(0,0,0,0.9);
+    }
+    .rounded { 
+      border-radius:15px; 
+      -moz-border-radius:15px; 
+      -webkit-border-radius:15px; 
+      border: 1px solid rgba(0, 0, 0, 0.3);
+    }
+
+    .clock{
+      margin-right: 4px;
+    }
+
+  </style>
+  </head>
+  <body>
+    <div class="panel container-fluid">
+      <div class="row">
+        <div class="col-sm-1">
+          <form>
+            <span><input type="text" class="search rounded" placeholder="Search..."></span>
+          </form>
+        </div>
+        <div class="col-sm-1">
+          Application
+        </div>
+        <div class="col-sm-1">
+          Application
+        </div>
+        <div class="col-sm-1">
+          Application
+        </div>
+        <div class="col-sm-1 pull-right text-right clock">
+          10:42 PM
+        </div>
+      </div> <!-- Row -->
+    </div> <!-- Container -->
+  </body>
+</html>
