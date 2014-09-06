@@ -342,16 +342,16 @@ void sprinkle_apply_flags(GtkWindow *window) {
   }
 
 //TYPE
-  if(wm_type == SP_WM_TYPE_DESKTOP){
+  if(!g_strcmp0(wm_type,SP_WM_TYPE_DESKTOP)){
     gtk_window_set_type_hint(window, GDK_WINDOW_TYPE_HINT_DESKTOP);
-  }else if(wm_type == SP_WM_TYPE_DOCK){
+  }else if(!g_strcmp0(wm_type,SP_WM_TYPE_DOCK)){
     gtk_window_set_type_hint(window, GDK_WINDOW_TYPE_HINT_DOCK);
   }
 
 //LAYER
-  if(wm_layer == SP_WM_LAYER_BELOW){
+  if(!g_strcmp0(wm_layer,SP_WM_LAYER_BELOW)){
     gdk_window_set_keep_below(gdk_window, TRUE);
-  }else if(wm_layer == SP_WM_LAYER_ABOVE){
+  }else if(!g_strcmp0(wm_layer, SP_WM_LAYER_ABOVE)){
     gdk_window_set_keep_above(gdk_window, TRUE);
   }
 
@@ -370,34 +370,30 @@ void sprinkle_apply_flags(GtkWindow *window) {
 
   if(wm_xpos >= 0 && wm_ypos >= 0) {
     gdk_window_move(gdk_window, wm_xpos, wm_ypos);
-  }else if(wm_dock){
+  }else{
     g_print("Window current size: %dx%d\n", window_w, window_h);
     g_print("Screen is %dx%d\n", gdk_screen_get_width(gdk_screen), gdk_screen_get_height(gdk_screen));
 
 //  set Y-coordinates
-    if(!strcmp(wm_dock,SP_WM_DOCK_BOTTOM)){
+    if(!g_strcmp0(wm_dock,SP_WM_DOCK_BOTTOM)){
       window_y = gdk_screen_get_height(gdk_screen) - window_h;
 
-    }else if(!strcmp(wm_dock,SP_WM_DOCK_RIGHT)){
+    }else if(!g_strcmp0(wm_dock,SP_WM_DOCK_RIGHT)){
       window_y = gdk_screen_get_width(gdk_screen) - window_w;
     }
 
 //  set X-coordinates
-    if(!strcmp(wm_dock, SP_WM_DOCK_TOP) || !strcmp(wm_dock, SP_WM_DOCK_BOTTOM)){
-      if(wm_align){
-        if(!strcmp(wm_align, SP_WM_ALIGN_MIDDLE)){
-          window_x = (gdk_screen_get_width(gdk_screen) / 2.0) - (window_w / 2.0);
-        }else if(!strcmp(wm_align,SP_WM_ALIGN_END)){
-          window_x = gdk_screen_get_width(gdk_screen) - window_w;
-        }
+    if(!g_strcmp0(wm_dock, SP_WM_DOCK_TOP) || !g_strcmp0(wm_dock, SP_WM_DOCK_BOTTOM)){
+      if(!g_strcmp0(wm_align, SP_WM_ALIGN_MIDDLE)){
+        window_x = (gdk_screen_get_width(gdk_screen) / 2.0) - (window_w / 2.0);
+      }else if(!g_strcmp0(wm_align,SP_WM_ALIGN_END)){
+        window_x = gdk_screen_get_width(gdk_screen) - window_w;
       }
-    }else if(!strcmp(wm_dock, SP_WM_DOCK_LEFT) || !strcmp(wm_dock, SP_WM_DOCK_RIGHT)){
-      if(wm_align){
-        if(!strcmp(wm_align, SP_WM_ALIGN_MIDDLE)){
-          window_x = (gdk_screen_get_height(gdk_screen) / 2.0) - (window_h / 2.0);
-        }else if(!strcmp(wm_align, SP_WM_ALIGN_END)){
-          window_x = gdk_screen_get_height(gdk_screen) - window_h;
-        }
+    }else if(!g_strcmp0(wm_dock, SP_WM_DOCK_LEFT) || !g_strcmp0(wm_dock, SP_WM_DOCK_RIGHT)){
+      if(!g_strcmp0(wm_align, SP_WM_ALIGN_MIDDLE)){
+        window_x = (gdk_screen_get_height(gdk_screen) / 2.0) - (window_h / 2.0);
+      }else if(!g_strcmp0(wm_align, SP_WM_ALIGN_END)){
+        window_x = gdk_screen_get_height(gdk_screen) - window_h;
       }
     }
 
