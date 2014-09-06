@@ -62,7 +62,7 @@ static gchar*    wm_dock       = NULL;
 static gchar*    wm_align      = NULL;
 static gboolean  wm_autostrut  = FALSE;
 static gboolean  wm_decorator  = FALSE;
-static gchar*    sp_system     = "/etc/sprinkles/apps";
+static gchar*    sp_system     = "/usr/share/sprinkles/apps";
 static gchar*    sp_user       = "~/.sprinkles/apps";
 
 static GOptionEntry entries[] =
