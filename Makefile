@@ -2,6 +2,7 @@ WARNINGS = -Wall -Wextra -Wno-unused-parameter -Wmissing-prototypes -Werror -Wfa
 CFLAGS   = $(WARNINGS) -g -O2
 
 all:
+	mkdir './bin'
 	gcc sprinkle.c `pkg-config --cflags --libs gtk+-2.0 webkit-1.0 cairo x11 pixman-1` -lm -ldl -o bin/sprinkle
 
 panel-tint2:
