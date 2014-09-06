@@ -183,7 +183,6 @@ int main(int argc, char* argv[]) {
       if(g_str_has_prefix(uri, "/")){
         uri = sprinkles_path_suffix_index(uri);
       }else{
-        g_print("URI: %s\n", uri);
         uri = sprinkles_find_application_by_name(uri);
 
         if(uri == NULL){
@@ -213,7 +212,7 @@ int main(int argc, char* argv[]) {
   gtk_widget_show_all(window);
 
 //apply the WM flags to the window
-  sprinkle_apply_flags(GTK_WINDOW(window));
+  //sprinkle_apply_flags(GTK_WINDOW(window));
 
 
   // enter mainloop (blocks until destroy)
@@ -242,13 +241,21 @@ static gchar* sprinkles_find_application_by_name(gchar *name){
 
 static gchar* sprinkles_application_path(gchar *path, gchar *name){
   struct stat buffer;
-  gchar       *exp_path;
-  gchar       *filename;
+  gchar       *exp_path = NULL;
+  gchar       *filename = NULL;
 
-  realpath(path, exp_path);
-  filename = g_strdup_printf("%s/%s", exp_path, name);
+  exp_path = realpath(path, NULL);
+
+  if(exp_path == NULL){
+    filename = g_strdup_printf("%s/%s", path, name);
+  }else{
+    filename = g_strdup_printf("%s/%s", exp_path, name);
+  }
+
+  g_print("Search %s\n", filename);
 
   if (stat(filename, &buffer) == 0){
+    g_print("File found! %s\n", filename);
     return filename;
   }
 
