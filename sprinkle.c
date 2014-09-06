@@ -31,6 +31,14 @@ gboolean supports_alpha = FALSE;
 static gchar* sprinkles_find_application_by_name(gchar *name);
 static gchar* sprinkles_application_path(gchar *path, gchar *name);
 static gchar* sprinkles_path_suffix_index(gchar *uri);
+static void on_show(GtkWidget *widget, gpointer user_data);
+static gboolean on_popup_window(WebKitWebView             *web_view,
+               WebKitWebFrame            *frame,
+               WebKitNetworkRequest      *request,
+               WebKitWebNavigationAction *navigation_action,
+               WebKitWebPolicyDecision   *policy_decision,
+               gpointer                   user_data);
+
 static void screen_changed(GtkWidget *widget, GdkScreen *old_screen, gpointer user_data);
 static gboolean expose(GtkWidget *widget, GdkEventExpose *event, gpointer user_data);
 static void clicked(GtkWindow *win, GdkEventButton *event, gpointer user_data);
@@ -61,6 +69,7 @@ static gint      wm_ypos       = -1;
 static gchar*    wm_dock       = NULL;
 static gchar*    wm_align      = NULL;
 static gboolean  wm_autostrut  = FALSE;
+static gboolean  wm_root_win   = FALSE;
 static gboolean  wm_decorator  = FALSE;
 static gchar*    sp_system     = "/usr/share/sprinkles/apps";
 static gchar*    sp_user       = "~/.sprinkles/apps";
@@ -77,6 +86,7 @@ static GOptionEntry entries[] =
   { "ypos",          'Y', 0, G_OPTION_ARG_INT   , &wm_ypos,       "The Y-coordinate at which the window should be placed initially", NULL },
   { "dock",          'D', 0, G_OPTION_ARG_STRING, &wm_dock,       "A shortcut for pinning the window to a particular edge of the screen (top, left, bottom, right)", NULL},
   { "align",         'A', 0, G_OPTION_ARG_STRING, &wm_align,      "A shortcut for aligning the window within the axis the window is docked to (start, middle, end)", NULL},
+  { "root",          'r', 0, G_OPTION_ARG_NONE,   &wm_root_win,   "Make this window's parent the root window (draw on desktop)", NULL},
   { "reserve",       'R', 0, G_OPTION_ARG_NONE,   &wm_autostrut,  "Have this window reserve its dimensions so that other windows won't maximize over it", NULL},
   { "decorator",     'E', 0, G_OPTION_ARG_NONE,   &wm_decorator,  "Let window display window manager decorations", NULL},
   { NULL }
@@ -108,11 +118,13 @@ int main(int argc, char* argv[]) {
 
 //create main window and Webkit widget
   GtkWidget           *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  GtkWidget           *layout = gtk_scrolled_window_new(NULL, NULL);
 
   gtk_window_set_default_size(GTK_WINDOW(window), 512, 512);
 
-  WebKitWebView     *web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
-  WebKitWebSettings *settings = webkit_web_settings_new();
+  WebKitWebView           *web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
+  WebKitWebSettings       *settings = webkit_web_settings_new();
+  WebKitWebWindowFeatures *features = webkit_web_view_get_window_features(web_view);
 
   // maximize
   //gtk_window_maximize(GTK_WINDOW(window));
@@ -125,27 +137,40 @@ int main(int argc, char* argv[]) {
 
 
   // callback: quit GTK mainloop
-  g_signal_connect(window, "destroy",        G_CALLBACK(destroy_cb), NULL);
+  g_signal_connect(window,   "destroy",        G_CALLBACK(destroy_cb), NULL);
+  g_signal_connect(window,   "show",           G_CALLBACK(on_show), NULL);
 
   // callback(s): handle cairo double buffering (this is what enables the top-level to be transparent)
-  g_signal_connect(window, "expose-event",   G_CALLBACK(expose), NULL);
-  g_signal_connect(window, "screen-changed", G_CALLBACK(screen_changed), NULL);
+  g_signal_connect(window,   "expose-event",   G_CALLBACK(expose), NULL);
+  g_signal_connect(window,   "screen-changed", G_CALLBACK(screen_changed), NULL);
+
+  // callback(s): handle cairo double buffering
+  g_signal_connect(layout,   "expose-event",   G_CALLBACK(expose), NULL);
+  g_signal_connect(layout,   "screen-changed", G_CALLBACK(screen_changed), NULL);
 
   // callback(s): handle cairo double buffering (this is what enables the WEBKIT WIDGET to be transparent)
   g_signal_connect(web_view, "expose-event",   G_CALLBACK(expose), NULL);
   g_signal_connect(web_view, "screen-changed", G_CALLBACK(screen_changed), NULL);
 
   g_signal_connect(web_view, "navigation-policy-decision-requested", G_CALLBACK(navigate), NULL);
+  g_signal_connect(web_view, "new-window-policy-decision-requested", G_CALLBACK(on_popup_window), NULL);
+
+
+  g_object_set(G_OBJECT(web_view), "self-scrolling",                     TRUE, NULL);
+
 
   // disable titlebar and border
   gtk_window_set_decorated(GTK_WINDOW(window), wm_decorator);
 
   // do this for reasons
   gtk_widget_set_app_paintable(window, TRUE);
+  gtk_widget_set_app_paintable(layout, TRUE);
 
-  // enable <audio> tag
+  // enable images
   g_object_set (G_OBJECT(settings), "auto-load-images",                  TRUE, NULL);
 
+  // disable auto-resize
+  g_object_set (G_OBJECT(settings), "auto-resize-window",                FALSE, NULL);
 
   // enable extensions
   g_object_set (G_OBJECT(settings), "enable-plugins",                    TRUE, NULL);
@@ -166,14 +191,23 @@ int main(int argc, char* argv[]) {
   g_object_set (G_OBJECT(settings), "enable-file-access-from-file-uris", TRUE, NULL);
 
 
+  // set window features
+  g_object_set(G_OBJECT(features), "locationbar-visible",                FALSE, NULL);
+  g_object_set(G_OBJECT(features), "menubar-visible",                    FALSE, NULL);
+  g_object_set(G_OBJECT(features), "scrollbar-visible",                  FALSE, NULL);
+  g_object_set(G_OBJECT(features), "statusbar-visible",                  FALSE, NULL);
+  g_object_set(G_OBJECT(features), "toolbar-visible",                    FALSE, NULL);
+
+
+
   // set the settings from above
   webkit_web_view_set_settings (WEBKIT_WEB_VIEW(web_view), settings);
 
   // enable fully transparent backgrounds
   webkit_web_view_set_transparent(WEBKIT_WEB_VIEW(web_view), TRUE);
 
-
-  gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(web_view));
+  gtk_container_add(GTK_CONTAINER(layout), GTK_WIDGET(web_view));
+  gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(layout));
 
   // first CLI argument is the page to load, otherwise go to blank
   if(argc > 1){
@@ -210,10 +244,6 @@ int main(int argc, char* argv[]) {
 
   // show the window
   gtk_widget_show_all(window);
-
-//apply the WM flags to the window
-  sprinkle_apply_flags(GTK_WINDOW(window));
-
 
   // enter mainloop (blocks until destroy)
   gtk_main();
@@ -271,6 +301,22 @@ static gchar* sprinkles_path_suffix_index(gchar *uri){
   return uri;
 }
 
+static void on_show(GtkWidget *widget, gpointer userdata){
+  //apply the WM flags to the window
+    sprinkle_apply_flags(GTK_WINDOW(widget));
+}
+
+static gboolean on_popup_window(WebKitWebView             *web_view,
+               WebKitWebFrame            *frame,
+               WebKitNetworkRequest      *request,
+               WebKitWebNavigationAction *navigation_action,
+               WebKitWebPolicyDecision   *policy_decision,
+               gpointer                   user_data)
+{
+  webkit_web_policy_decision_ignore(policy_decision);
+  return TRUE;
+}
+
 static void screen_changed(GtkWidget *widget, GdkScreen *old_screen, gpointer userdata)
 {
     /* To check if the display supports alpha channels, get the colormap */
@@ -302,7 +348,7 @@ static gboolean expose(GtkWidget *widget, GdkEventExpose *event, gpointer userda
         cairo_set_source_rgb (cr, 1.0, 0.5, 1.0); /* opaque white */
     }
 
-    blur_image_surface(surface, 2, 3.0);
+    //blur_image_surface(surface, 2, 3.0);
 
     /* draw the background */
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
@@ -404,25 +450,37 @@ void sprinkle_apply_flags(GtkWindow *window) {
 
   gdk_window_get_geometry(gdk_window, &window_x, &window_y, NULL, NULL, NULL);
 
+  if(wm_root_win){
+    gdk_window_reparent(gdk_window, gdk_get_default_root_window(), window_x, window_y);
+  }
+
 //RESERVE
   if(wm_autostrut){
     GdkAtom atom;
     GdkAtom cardinal;
     unsigned long strut[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 
-    if(!strcmp(wm_dock, SP_WM_DOCK_TOP)){
+    if(!g_strcmp0(wm_dock, SP_WM_DOCK_TOP)){
+      g_print("Reserving %d pixels at the top of the screen\n", window_h);
+
       strut[2]  = window_h;            // strut top
       strut[8]  = window_x;            // top_start_x
       strut[9]  = window_x + window_w; // top_end_x
-    }else if(!strcmp(wm_dock, SP_WM_DOCK_BOTTOM)){
+    }else if(!g_strcmp0(wm_dock, SP_WM_DOCK_BOTTOM)){
+      g_print("Reserving %d pixels at the bottom of the screen\n", window_h);
+
       strut[3]  = window_h;            // strut bottom
       strut[10] = window_x;            // bottom_start_x
       strut[11] = window_x + window_w; // bottom_end_x
-    }else if(!strcmp(wm_dock, SP_WM_DOCK_LEFT)){
+    }else if(!g_strcmp0(wm_dock, SP_WM_DOCK_LEFT)){
+      g_print("Reserving %d pixels on the left side of the screen\n", window_w);
+
       strut[0]  = window_w;            // strut left
       strut[4]  = window_y;            // left_start_y
       strut[5]  = window_y + window_h; // left_end_y
-    }else if(!strcmp(wm_dock, SP_WM_DOCK_RIGHT)){
+    }else if(!g_strcmp0(wm_dock, SP_WM_DOCK_RIGHT)){
+      g_print("Reserving %d pixels on the right side of the screen\n", window_w);
+
       strut[1]  = window_w;            // strut right
       strut[6]  = window_y;            // right_start_y
       strut[7]  = window_y + window_h; // right_end_y
