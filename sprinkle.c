@@ -1,6 +1,8 @@
 #include <gtk/gtk.h>
 #include <gdk/gdkscreen.h>
 #include <cairo.h>
+#include <math.h>
+#include <pixman.h>
 #include <string.h>
 #include <webkit/webkit.h>
 
@@ -25,6 +27,8 @@ gboolean supports_alpha = FALSE;
 static void screen_changed(GtkWidget *widget, GdkScreen *old_screen, gpointer user_data);
 static gboolean expose(GtkWidget *widget, GdkEventExpose *event, gpointer user_data);
 static void clicked(GtkWindow *win, GdkEventButton *event, gpointer user_data);
+static cairo_surface_t* blur_image_surface(cairo_surface_t *surface, int radius, double sigma);
+static pixman_fixed_t* create_gaussian_blur_kernel(int radius, double sigma, int *length);
 static gboolean navigate(
   WebKitWebView             *web_view,
   WebKitWebFrame            *frame,
@@ -96,7 +100,7 @@ int main(int argc, char* argv[]) {
 //create main window and Webkit widget
   GtkWidget           *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
-  //gtk_window_set_default_size(GTK_WINDOW(window), 512, 512);
+  gtk_window_set_default_size(GTK_WINDOW(window), 512, 512);
 
   WebKitWebView     *web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
   WebKitWebSettings *settings = webkit_web_settings_new();
@@ -180,7 +184,7 @@ int main(int argc, char* argv[]) {
   gtk_widget_show_all(window);
 
 //apply the WM flags to the window
-  sprinkle_apply_flags(GTK_WINDOW(window));
+  //sprinkle_apply_flags(GTK_WINDOW(window));
 
 
   // enter mainloop (blocks until destroy)
@@ -213,12 +217,15 @@ static void screen_changed(GtkWidget *widget, GdkScreen *old_screen, gpointer us
 static gboolean expose(GtkWidget *widget, GdkEventExpose *event, gpointer userdata)
 {
    cairo_t *cr = gdk_cairo_create(widget->window);
+   cairo_surface_t *surface = cairo_get_target(cr);
 
     if (supports_alpha){
         cairo_set_source_rgba (cr, 1.0, 1.0, 1.0, 0.0); /* transparent */
     }else{
         cairo_set_source_rgb (cr, 1.0, 0.5, 1.0); /* opaque white */
     }
+
+    blur_image_surface(surface, 2, 3.0);
 
     /* draw the background */
     cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
@@ -330,7 +337,7 @@ void sprinkle_apply_flags(GtkWindow *window) {
     GdkAtom atom;
     GdkAtom cardinal;
     unsigned long strut[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
-    
+
     if(!strcmp(wm_dock, SP_WM_DOCK_TOP)){
       strut[2]  = window_h;            // strut top
       strut[8]  = window_x;            // top_start_x
@@ -351,14 +358,103 @@ void sprinkle_apply_flags(GtkWindow *window) {
 
     cardinal = gdk_atom_intern("CARDINAL", FALSE);
     atom = gdk_atom_intern("_NET_WM_STRUT", FALSE);
-    
+
     gdk_property_change(gdk_window, atom, cardinal, 32, GDK_PROP_MODE_REPLACE,
         (guchar*)strut, 4);
-    
+
     atom = gdk_atom_intern("_NET_WM_STRUT_PARTIAL", FALSE);
     gdk_property_change(gdk_window, atom, cardinal, 32, GDK_PROP_MODE_REPLACE,
         (guchar*)strut, 12);
 
-    gdk_window_move(gdk_window, window_x, window_y);    
+    gdk_window_move(gdk_window, window_x, window_y);
   }
+}
+
+
+static pixman_fixed_t *
+create_gaussian_blur_kernel (int     radius,
+                             double  sigma,
+                             int    *length)
+{
+  const double scale2 = 2.0 * sigma * sigma;
+  const double scale1 = 1.0 / (M_PI * scale2);
+
+  const int size = 2 * radius + 1;
+  const int n_params = size * size;
+
+  pixman_fixed_t *params;
+  double *tmp, sum;
+  int x, y, i;
+
+  tmp = g_newa (double, n_params);
+
+  /* caluclate gaussian kernel in floating point format */
+  for (i = 0, sum = 0, x = -radius; x <= radius; ++x) {
+          for (y = -radius; y <= radius; ++y, ++i) {
+                  const double u = x * x;
+                  const double v = y * y;
+
+                  tmp[i] = scale1 * exp (-(u+v)/scale2);
+
+                  sum += tmp[i];
+          }
+  }
+
+  /* normalize gaussian kernel and convert to fixed point format */
+  params = g_new (pixman_fixed_t, n_params + 2);
+
+  params[0] = pixman_int_to_fixed (size);
+  params[1] = pixman_int_to_fixed (size);
+
+  for (i = 0; i < n_params; ++i)
+          params[2 + i] = pixman_double_to_fixed (tmp[i] / sum);
+
+  if (length)
+          *length = n_params + 2;
+
+  return params;
+}
+
+static cairo_surface_t* blur_image_surface(
+  cairo_surface_t *surface,
+  int              radius,
+  double           sigma)
+{
+  static cairo_user_data_key_t data_key;
+  pixman_fixed_t *params = NULL;
+  int n_params;
+
+  pixman_image_t *src, *dst;
+  int w, h, s;
+  gpointer p;
+
+  g_return_val_if_fail
+    (cairo_surface_get_type (surface) != CAIRO_SURFACE_TYPE_IMAGE,
+     NULL);
+
+  w = cairo_image_surface_get_width (surface);
+  h = cairo_image_surface_get_height (surface);
+  s = cairo_image_surface_get_stride (surface);
+
+  /* create pixman image for cairo image surface */
+  p = cairo_image_surface_get_data (surface);
+  src = pixman_image_create_bits (PIXMAN_a8, w, h, p, s);
+
+  /* attach gaussian kernel to pixman image */
+  params = create_gaussian_blur_kernel(radius, sigma, &n_params);
+  pixman_image_set_filter (src, PIXMAN_FILTER_CONVOLUTION, params, n_params);
+  g_free (params);
+
+  /* render blured image to new pixman image */
+  p = g_malloc0 (s * h);
+  dst = pixman_image_create_bits (PIXMAN_a8, w, h, p, s);
+  pixman_image_composite (PIXMAN_OP_SRC, src, NULL, dst, 0, 0, 0, 0, 0, 0, w, h);
+  pixman_image_unref (src);
+
+  /* create new cairo image for blured pixman image */
+  surface = cairo_image_surface_create_for_data (p, CAIRO_FORMAT_A8, w, h, s);
+  cairo_surface_set_user_data (surface, &data_key, p, g_free);
+  pixman_image_unref (dst);
+
+  return surface;
 }

@@ -3,30 +3,52 @@ angular.module('app', [
 ])
 .run(['$rootScope', '$http', function($rootScope, $http){
   $rootScope.api = {
-    baseuri: 'http://localhost:9521',
+    basehost: 'localhost:9521',
 
     head: function(endpoint, config){
-      return $http.head($rootScope.api.baseuri+endpoint, config);
+      return $http.head('http://'+$rootScope.api.basehost+endpoint, config);
     },
 
     get: function(endpoint, config){
-      return $http.get($rootScope.api.baseuri+endpoint, config);
+      return $http.get('http://'+$rootScope.api.basehost+endpoint, config);
     },
 
     put: function(endpoint, data){
-      return $http.put($rootScope.api.baseuri+endpoint, data);
+      return $http.put('http://'+$rootScope.api.basehost+endpoint, data);
     },
 
     post: function(endpoint, data){
-      return $http.post($rootScope.api.baseuri+endpoint, data);
+      return $http.post('http://'+$rootScope.api.basehost+endpoint, data);
     },
 
     delete: function(endpoint, config){
-      return $http.delete($rootScope.api.baseuri+endpoint, config);
+      return $http.delete('http://'+$rootScope.api.basehost+endpoint, config);
+    }
+  };
+
+  $rootScope.bus = {
+    connect: function(){
+      $rootScope.bus._connection = new WebSocket('ws://'+$rootScope.api.basehost+'/v1/bus');
+
+  //  wire up handlers (if defined)
+      angular.forEach(['open', 'close', 'message'], function(verb){
+        if(angular.isFunction($rootScope.bus['on'+verb])){
+          $rootScope.bus._connection['on'+verb] = function(e){
+            $rootScope.$apply(function(){
+              $rootScope.bus['on'+verb](angular.fromJson(e.data), e);
+            });
+          }
+        }
+      });
     }
   };
 }])
-.controller('PanelController', ['$scope', '$interval', function($scope, $interval){
+.controller('PanelController', ['$scope', '$interval', '$rootScope', function($scope, $interval, $rootScope){
+  $rootScope.bus.onmessage = function(data, raw_event){
+    console.debug("msg", data, raw_event);
+    $scope.reload();
+  }
+
   $scope.reload = function(){
     $scope.api.get('/v1/session/workspaces').success(function(data){
       $scope.workspaces = data;
@@ -43,5 +65,6 @@ angular.module('app', [
     })
   }
 
+  $rootScope.bus.connect();
   $scope.reload();
 }]);
