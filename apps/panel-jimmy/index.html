@@ -4,6 +4,7 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
     <script type="text/javascript" src="angular.min.js"></script>
     <script type="text/javascript" src="panel.js"></script>
+    <link href='http://fonts.googleapis.com/css?family=Droid+Sans' rel='stylesheet' type='text/css'>
     <style>
       html, body{
         margin: 0;
@@ -18,7 +19,8 @@
       .panel {
         margin: 0 auto;
         width: 100%;
-        height: 24px;
+        height: 26px;
+
         background: -webkit-linear-gradient(top, rgba(250,250,250,0.9) 0%,
         rgba(206,206,206,0.9) 100%);
         border-top: 1px solid rgba(255,255,255,0.99);
@@ -28,7 +30,7 @@
       /*Search*/
       .search { 
         padding:0px 0px 0px 4px;
-        margin:1px 1px 0px 0px !important;
+        margin:2px 1px 0px 0px !important;
         background: rgba(100, 100, 100, 0.2);
         height: 19px;
         color: rgb(0,0,0);
@@ -43,12 +45,26 @@
       }
 
       .application{
-        background: rgba(100, 100, 100, 0.2);
+        font-family: 'Droid Sans', sans-serif;
+        font-size: 16px;
+        /* -webkit-text-stroke: 1px white; */
+         -webkit-text-stroke-width: 0.3px;
+         -webkit-text-stroke-color: rgba(255, 255, 255, 0.3);
+          
         -webkit-border-radius:4px; 
         border: 1px solid rgba(0, 0, 0, 0.3);
         margin:1px 1px 1px 1px ;
-        height: 19px;
-
+        padding: 0px 0px 0px 18px;
+          
+        height: 20px;
+        line-height:20px;
+        width: 140px;
+        float: left;
+          
+        background: rgba(100, 100, 100, 0.2);
+        background-size: 48px 48px;
+        background-repeat: no-repeat;
+        background-position:left center;
       }
       .active{
         -webkit-box-shadow: inset 0px 0px 10px 2px rgba(0,0,0,0.16);
@@ -75,14 +91,11 @@
         <div ng-repeat="window in windows | filter:{
                        'workspace': workspace.number,
                        'all_workspaces': '!true' }"
-            ng-class="{active: window.active}"
+            ng-class="{active: active}"
             ng-click="actionWindow(window.id, 'raise')"
             class="window">
-
-          <div class="col-sm-1 application">
-            <img height="14" width="14" ng-src="{{ window.icon }}?w=14&amp;h=14">
-            {{ window.name | limitTo : 10 }}
-            
+          <div class='application' style="background-image: url('{{ window.icon }}?w=48&amp;h=48');">
+            {{ window.name | limitTo : 12 }}
           </div>
         </div>
 
