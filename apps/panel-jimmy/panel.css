@@ -14,7 +14,7 @@ html, body{
   width: 100%;
   height: 22px;
 
-  background: -webkit-linear-gradient(top, rgba(250,250,250,0.9) 0%,  rgba(206,206,206,0.9) 100%);
+  background: -webkit-linear-gradient(top, rgba(250,250,250,0.9) 0%,  rgba(206,206,206,0.7) 100%);
   border-top: 1px solid rgba(255,255,255,0.99);
   border-bottom: 1px solid rgba(0,0,0,0.5);
 
@@ -42,7 +42,7 @@ html, body{
   background-size: 16px 16px;
   background-repeat: no-repeat;
   background-position: center;  
-  -webkit-transition: width 0.1s; /* Safari and Chrome */
+  -webkit-transition: width 0.1s; 
 }
 input.search:hover{
  width:  140px;
