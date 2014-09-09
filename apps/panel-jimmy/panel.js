@@ -70,7 +70,7 @@ angular.module('app', [
 }]);
 
 function TimeCtrl($scope, $timeout) {
-    $scope.clock = "loading clock..."; // initialise the time variable
+    $scope.clock = "00:00:00 AM"; // initialise the time variable
     $scope.tickInterval = 1000 //ms
 
     var tick = function() {
@@ -80,4 +80,12 @@ function TimeCtrl($scope, $timeout) {
 
     // Start the timer
     $timeout(tick, $scope.tickInterval);
-}
+};
+
+$( "#search" ).hover(
+  function() {
+    $( this ).animate({width: '160px'}, 100);
+  }, function() {
+    $( this ).animate({width: '30px'}, 100);
+  }
+);
