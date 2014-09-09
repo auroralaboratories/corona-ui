@@ -24,23 +24,39 @@ html, body{
 .search { 
   padding:0px 3px 0px 4px;
   margin:0.5px 1px 0px 4px;
-  width: 140px;
+  width: 14px;
   height: 18px;
   float: left;
   font-family: 'Droid Sans', sans-serif;
   font-size: 14px;
-  background: rgba(100, 100, 100, 0.2);
+
   color: rgb(0,0,0);
   outline: none;
   border-radius:15px; 
   -webkit-border-radius:15px; 
   border: 1px solid rgba(0, 0, 0, 0.3);
-  
+  transition: width 0.1s;
+
+  background: rgba(100, 100, 100, 0.2);
+  background-image: url('http://cdn.flaticon.com/png/256/15642.png');
+  background-size: 16px 16px;
+  background-repeat: no-repeat;
+  background-position:left center;  
+  -webkit-transition: width 0.1s; /* Safari and Chrome */
+}
+input.search:hover{
+ width:  140px;
+ background: rgba(100, 100, 100, 0.2);
+}
+input.search:focus{
+ width:  140px;
+ background: rgba(100, 100, 100, 0.2);
 }
 ::-webkit-input-placeholder {
   color: rgba(0,0,0,0.9);
 }
 
+/*Applications*/
 .application{
   font-family: 'Droid Sans', sans-serif;
   font-size: 16px;
@@ -68,7 +84,7 @@ html, body{
   border: 1px solid rgba(0, 0, 0, 0.9);
 }
 
-
+/*Trays*/
 .clock{
   float: right;
   text-align: right;
