@@ -11,29 +11,33 @@
   </head>
   <body ng-controller="PanelController">
     <div class="panel container-fluid" id="root">
-        <form>
-          <input type="text" id="search" class="search" placeholder="">
-        </form>
-        <div ng-repeat="window in windows | filter:{
-                       'workspace': workspace.number,
-                       'all_workspaces': '!true' }"
-            ng-class="{active: active}"
-            ng-click="actionWindow(window.id, 'raise')"
-            class="window">
-          <div class='application' style="background-image: url('{{ window.icon }}?w=48&amp;h=48');">
-            {{ window.name | limitTo : 14 }}
-          </div>
+      <form>
+        <input type="text" id="search" class="search" placeholder="">
+      </form>
+      <div ng-repeat="window in windows | filter:{
+                     'workspace': workspace.number,
+                     'all_workspaces': '!true' }"
+          ng-class="{active: active}"
+          ng-click="actionWindow(window.id, 'raise')"
+          class="window">
+
+        <div class='application' style="background-image: url('{{ window.icon }}?w=48&amp;h=48');">
+          {{ window.name | limitTo : 14 }}
         </div>
-        <div class="clock" ng-controller='TimeCtrl'>
+
+      </div>
+      <div class="traycontainer">
+        <div class="clock tray" ng-controller='TimeCtrl'>
           {{ clock  | date:'mediumTime'}}
         </div>
-        <div class="systray">
+        <div class="tray" id="systray">
           <i class="fa fa-signal fa-md"></i> 
           <i class="fa fa-volume-up fa-md"></i>
         </div>
-        <div class="apptray">
+        <div class="tray" id="apptray">
           <i class="fa fa-dropbox fa-md"></i>
         </div>
+      </div>
     </div> <!-- Container -->
   </body>
 </html>

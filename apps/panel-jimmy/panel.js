@@ -70,7 +70,7 @@ angular.module('app', [
 }]);
 
 function TimeCtrl($scope, $timeout) {
-    $scope.clock = "00:00:00 AM"; // initialise the time variable
+    $scope.clock = "10:00:00 AM"; // initialise the time variable
     $scope.tickInterval = 1000 //ms
 
     var tick = function() {
