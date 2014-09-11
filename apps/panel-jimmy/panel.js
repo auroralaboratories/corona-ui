@@ -1,6 +1,4 @@
-angular.module('app', [
-  'ng'
-])
+angular.module('app', [ 'ng' ])
 .run(['$rootScope', '$http', function($rootScope, $http){
   $rootScope.api = {
     basehost: 'localhost:9521',
@@ -43,6 +41,7 @@ angular.module('app', [
     }
   };
 }])
+
 .controller('PanelController', ['$scope', '$interval', '$rootScope', function($scope, $interval, $rootScope){
   $rootScope.bus.onmessage = function(data, raw_event){
     console.debug("msg", data, raw_event);
@@ -69,6 +68,7 @@ angular.module('app', [
   $scope.reload();
 }]);
 
+
 function TimeCtrl($scope, $timeout) {
     $scope.clock = "10:00:00 AM"; // initialise the time variable
     $scope.tickInterval = 1000 //ms
@@ -81,11 +81,3 @@ function TimeCtrl($scope, $timeout) {
     // Start the timer
     $timeout(tick, $scope.tickInterval);
 };
-
-$( "#search" ).hover(
-  function() {
-    $( this ).animate({width: '160px'}, 100);
-  }, function() {
-    $( this ).animate({width: '30px'}, 100);
-  }
-);
