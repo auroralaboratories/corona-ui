@@ -28,9 +28,9 @@
 
 gboolean supports_alpha = FALSE;
 
-static gchar* sprinkles_find_application_by_name(gchar *name);
-static gchar* sprinkles_application_path(gchar *path, gchar *name);
-static gchar* sprinkles_path_suffix_index(gchar *uri);
+static gchar* corona_find_application_by_name(gchar *name);
+static gchar* corona_application_path(gchar *path, gchar *name);
+static gchar* corona_path_suffix_index(gchar *uri);
 static void on_show(GtkWidget *widget, gpointer user_data);
 static gboolean on_popup_window(WebKitWebView             *web_view,
                WebKitWebFrame            *frame,
@@ -52,7 +52,7 @@ static gboolean navigate(
   WebKitWebPolicyDecision   *policy_decision,
   gpointer                   user_data);
 
-void sprinkle_apply_flags(GtkWindow *window);
+void corona_apply_flags(GtkWindow *window);
 
 static void destroy_cb(GtkWidget* widget, gpointer data) {
   gtk_main_quit();
@@ -71,8 +71,8 @@ static gchar*    wm_align      = NULL;
 static gboolean  wm_autostrut  = FALSE;
 static gboolean  wm_root_win   = FALSE;
 static gboolean  wm_decorator  = FALSE;
-static gchar*    sp_system     = "/usr/share/sprinkles/apps";
-static gchar*    sp_user       = "~/.sprinkles/apps";
+static gchar*    sp_system     = "/usr/share/corona/apps";
+static gchar*    sp_user       = "~/.corona/apps";
 
 static GOptionEntry entries[] =
 {
@@ -215,16 +215,16 @@ int main(int argc, char* argv[]) {
 
     if(!g_str_has_prefix(uri, "http") && !g_str_has_prefix(uri, "file")){
       if(g_str_has_prefix(uri, "/")){
-        uri = sprinkles_path_suffix_index(uri);
+        uri = corona_path_suffix_index(uri);
       }else{
-        uri = sprinkles_find_application_by_name(uri);
+        uri = corona_find_application_by_name(uri);
 
         if(uri == NULL){
           g_print("Could not find application '%s'\n", argv[1]);
           return 64;
         }
 
-        uri = sprinkles_path_suffix_index(uri);
+        uri = corona_path_suffix_index(uri);
       }
 
       uri = g_strdup_printf("file://%s", uri);
@@ -251,25 +251,25 @@ int main(int argc, char* argv[]) {
   return 0;
 }
 
-static gchar* sprinkles_find_application_by_name(gchar *name){
+static gchar* corona_find_application_by_name(gchar *name){
   gchar *rv;
 
-  if((rv = sprinkles_application_path("./apps", name)) != NULL){
+  if((rv = corona_application_path("./apps", name)) != NULL){
     return rv;
   }
 
-  if((rv = sprinkles_application_path(sp_user, name)) != NULL){
+  if((rv = corona_application_path(sp_user, name)) != NULL){
     return rv;
   }
 
-  if((rv = sprinkles_application_path(sp_system, name)) != NULL){
+  if((rv = corona_application_path(sp_system, name)) != NULL){
     return rv;
   }
 
   return NULL;
 }
 
-static gchar* sprinkles_application_path(gchar *path, gchar *name){
+static gchar* corona_application_path(gchar *path, gchar *name){
   struct stat buffer;
   gchar       *exp_path = NULL;
   gchar       *filename = NULL;
@@ -293,7 +293,7 @@ static gchar* sprinkles_application_path(gchar *path, gchar *name){
 }
 
 
-static gchar* sprinkles_path_suffix_index(gchar *uri){
+static gchar* corona_path_suffix_index(gchar *uri){
   if(!g_str_has_suffix(uri, ".html")){
     uri = g_strconcat(uri, "/index.html", NULL);
   }
@@ -303,7 +303,7 @@ static gchar* sprinkles_path_suffix_index(gchar *uri){
 
 static void on_show(GtkWidget *widget, gpointer userdata){
   //apply the WM flags to the window
-    sprinkle_apply_flags(GTK_WINDOW(widget));
+    corona_apply_flags(GTK_WINDOW(widget));
 }
 
 static gboolean on_popup_window(WebKitWebView             *web_view,
@@ -370,7 +370,7 @@ static gboolean navigate(
   return FALSE;
 }
 
-void sprinkle_apply_flags(GtkWindow *window) {
+void corona_apply_flags(GtkWindow *window) {
   GdkWindow *gdk_window = gtk_widget_get_window(GTK_WIDGET(window));
   GdkScreen *gdk_screen = gtk_window_get_screen(window);
   GdkWindow *gdk_root   = gdk_screen_get_root_window(gdk_screen);

@@ -1,14 +1,14 @@
-# Sprinkle
+# Corona UI
 A transparent, borderless Webkit frame (and not much else)
 
 ## Overview
 
-A "sprinkle" is nothing more than a very tiny web browser designed to load a single-page web application.  These applications will, in turn, talk to the [Sprinkles API](https://github.com/ghetzel/sprinkles-api) for performing desktop and system management tasks.  Collectively, these tasks form the necessary interactions and behaviors of using a modern Linux graphical environment.
+The Corona UI is a very tiny web browser designed to load a single-page web application.  These applications will, in turn, talk to the [Corona API](https://github.com/auroralaboratories/corona-api) for performing desktop and system management tasks.  Collectively, these tasks form the necessary interactions and behaviors of using a modern Linux graphical environment.
 
 ## Command Line Usage
 
 ```
-sprinkle [options] APP
+corona [options] APP
 ```
 
 ### `[options]`
@@ -30,17 +30,17 @@ sprinkle [options] APP
 
 ### `APP`
 
-The `APP` argument is mandatory and tells `sprinkle` which page it should load.  If an absolute path is specified (that is, a path that starts with a _/_ ), then `sprinkle` will attempt to load the file at that path.  If the absolute path is a directory, it will attempt to load the file `index.html` in that directory.  Otherwise, the value of `APP` is treated as an _application name_, and a series of directories will be searched to locate the application, with the first existing path being loaded.  The directories that are searched can be overridden by setting the `SPRINKLE_PATH` environment variable.  The default search path is:
+The `APP` argument is mandatory and tells `corona` which page it should load.  If an absolute path is specified (that is, a path that starts with a _/_ ), then `corona` will attempt to load the file at that path.  If the absolute path is a directory, it will attempt to load the file `index.html` in that directory.  Otherwise, the value of `APP` is treated as an _application name_, and a series of directories will be searched to locate the application, with the first existing path being loaded.  The directories that are searched can be overridden by setting the `CORONA_PATH` environment variable.  The default search path is:
 
-* _~/.sprinkles/apps_
-* _/usr/share/sprinkles/apps_
+* _~/.corona/apps_
+* _/usr/share/corona/apps_
 
-The value of `APP` will be appended to each of these paths, then an _index.html_ file be loaded.  So, for example, given the command `sprinkle paneltest`, this is the series of paths that would be searched:
+The value of `APP` will be appended to each of these paths, then an _index.html_ file be loaded.  So, for example, given the command `corona paneltest`, this is the series of paths that would be searched:
 
 ```
-~/.sprinkles/apps/paneltest/index.html
-/usr/share/sprinkles/paneltest/index.html
+~/.corona/apps/paneltest/index.html
+/usr/share/corona/paneltest/index.html
 ```
 
-With the first extant file being loaded.  If no file could be found, `sprinkle` will exit immediately with a non-zero exit status.
+With the first extant file being loaded.  If no file could be found, `corona` will exit immediately with a non-zero exit status.
 
