@@ -31,13 +31,21 @@ gboolean supports_alpha = FALSE;
 static gchar* corona_find_application_by_name(gchar *name);
 static gchar* corona_application_path(gchar *path, gchar *name);
 static gchar* corona_path_suffix_index(gchar *uri);
+static gboolean on_click(GtkWidget *widget, GdkEventButton *event, gpointer user_data);
 static void on_show(GtkWidget *widget, gpointer user_data);
-static gboolean on_popup_window(WebKitWebView             *web_view,
-               WebKitWebFrame            *frame,
-               WebKitNetworkRequest      *request,
-               WebKitWebNavigationAction *navigation_action,
-               WebKitWebPolicyDecision   *policy_decision,
-               gpointer                   user_data);
+static gboolean on_popup_window(
+  WebKitWebView             *web_view,
+  WebKitWebFrame            *frame,
+  WebKitNetworkRequest      *request,
+  WebKitWebNavigationAction *navigation_action,
+  WebKitWebPolicyDecision   *policy_decision,
+  gpointer                   user_data
+);
+static void on_page_load(
+  WebKitWebView             *web_view,
+  WebKitWebFrame            *frame,
+  gpointer                   user_data
+);
 
 static void screen_changed(GtkWidget *widget, GdkScreen *old_screen, gpointer user_data);
 static gboolean expose(GtkWidget *widget, GdkEventExpose *event, gpointer user_data);
@@ -141,8 +149,8 @@ int main(int argc, char* argv[]) {
   g_signal_connect(window,   "show",           G_CALLBACK(on_show), NULL);
 
   // callback(s): handle cairo double buffering (this is what enables the top-level to be transparent)
-  g_signal_connect(window,   "expose-event",   G_CALLBACK(expose), NULL);
-  g_signal_connect(window,   "screen-changed", G_CALLBACK(screen_changed), NULL);
+  // g_signal_connect(window,   "expose-event",   G_CALLBACK(expose), NULL);
+  // g_signal_connect(window,   "screen-changed", G_CALLBACK(screen_changed), NULL);
 
   // callback(s): handle cairo double buffering
   g_signal_connect(layout,   "expose-event",   G_CALLBACK(expose), NULL);
@@ -154,9 +162,8 @@ int main(int argc, char* argv[]) {
 
   g_signal_connect(web_view, "navigation-policy-decision-requested", G_CALLBACK(navigate), NULL);
   g_signal_connect(web_view, "new-window-policy-decision-requested", G_CALLBACK(on_popup_window), NULL);
-
-
-  g_object_set(G_OBJECT(web_view), "self-scrolling",                     TRUE, NULL);
+  g_signal_connect(web_view, "onload-event",                         G_CALLBACK(on_page_load), NULL);
+  g_signal_connect(web_view, "button-press-event",                   G_CALLBACK(on_click), NULL);
 
 
   // disable titlebar and border
@@ -189,15 +196,6 @@ int main(int argc, char* argv[]) {
 
   // do this too
   g_object_set (G_OBJECT(settings), "enable-file-access-from-file-uris", TRUE, NULL);
-
-
-  // set window features
-  g_object_set(G_OBJECT(features), "locationbar-visible",                FALSE, NULL);
-  g_object_set(G_OBJECT(features), "menubar-visible",                    FALSE, NULL);
-  g_object_set(G_OBJECT(features), "scrollbar-visible",                  FALSE, NULL);
-  g_object_set(G_OBJECT(features), "statusbar-visible",                  FALSE, NULL);
-  g_object_set(G_OBJECT(features), "toolbar-visible",                    FALSE, NULL);
-
 
 
   // set the settings from above
@@ -314,6 +312,51 @@ static gboolean on_popup_window(WebKitWebView             *web_view,
                gpointer                   user_data)
 {
   webkit_web_policy_decision_ignore(policy_decision);
+  return TRUE;
+}
+
+
+static void on_page_load(
+  WebKitWebView             *web_view,
+  WebKitWebFrame            *frame,
+  gpointer                   user_data
+){
+  g_print("PAGE LOADED\n");
+  WebKitDOMDocument *document = webkit_web_view_get_dom_document(web_view);
+}
+
+static gboolean on_click(GtkWidget *widget, GdkEventButton *event, gpointer user_data){
+  gdouble x = event->x;
+  gdouble y = event->y;
+
+  g_print("CLICK %f,%f\n",x,y);
+
+/*
+APPROACH:
+
+  The intention here is to only have this window actually respond to a click if
+the DOM element that was clicked is missing the CSS class '.click-passthrough'.
+
+Yea...
+
+So first step is to get the top-most DOM element that was clicked.  Ideally,
+this would be emitted from the page's own Javascript and we will already be
+firing as a result of a passthrough element having been clicked.
+
+Once that happens, do this, in order:
+
+- sync all X events
+- disable all X clicks on the current window
+- sync all X events
+- send X a click event at the current root window coordinates
+- sync all X events
+- re-enable clicks on the current window
+
+In theory, that should let us sythesize a click that passes through our window
+and hits whatever is below it.
+
+*/
+
   return TRUE;
 }
 
