@@ -44,3 +44,10 @@ The value of `APP` will be appended to each of these paths, then an _index.html_
 
 With the first extant file being loaded.  If no file could be found, `corona` will exit immediately with a non-zero exit status.
 
+### `Dependencies`
+
+```
+sudo apt-get install -y build-essential libgtk2.0-dev libwebkit-dev libcairo-dev libx11-dev libpixman-1-dev
+make all
+```
+
