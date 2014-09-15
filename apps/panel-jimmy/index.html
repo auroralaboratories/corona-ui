@@ -10,8 +10,8 @@
     <link rel="stylesheet" type="text/css" href="panel.css">
     <script type="text/javascript" src="panel.js"></script>
   </head>
-  <body ng-controller="PanelController">
-    <div class="panel container-fluid" id="root">
+  <body>
+    <div class="panel container-fluid" id="root" ng-controller="PanelController">
       <form>
         <input type="text" id="search" class="search" placeholder="">
       </form>
@@ -22,7 +22,7 @@
         <div class='application' style="background-image: url('{{ window.icon }}?w=48&amp;h=48');">
           {{ window.name | limitTo : 14 }}
         </div>
-      </div>
+      </div> <!-- window -->
       <div class="traycontainer">
         <div class="clock tray" ng-controller='TimeCtrl'>
           {{ clock  | date:'mediumTime'}}
@@ -34,7 +34,17 @@
         <div class="tray" id="apptray">
           <i class="fa fa-dropbox fa-md"></i>
         </div>
+      </div> <!-- traycontainer -->
+    </div> <!-- PanelController -->
+    <div class="launcher" ng-controller="ApplicationsController">
+      <div class="result">
+        <img src="http://placekitten.com/g/48/48"></img>
+        DERP
       </div>
-    </div> <!-- Container -->
+      <div class="result">
+        <img src="http://placekitten.com/g/48/48"></img>
+        DERP
+      </div>
+    </div>
   </body>
 </html>

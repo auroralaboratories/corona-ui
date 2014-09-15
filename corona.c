@@ -163,7 +163,7 @@ int main(int argc, char* argv[]) {
   g_signal_connect(web_view, "navigation-policy-decision-requested", G_CALLBACK(navigate), NULL);
   g_signal_connect(web_view, "new-window-policy-decision-requested", G_CALLBACK(on_popup_window), NULL);
   g_signal_connect(web_view, "onload-event",                         G_CALLBACK(on_page_load), NULL);
-  g_signal_connect(web_view, "button-press-event",                   G_CALLBACK(on_click), NULL);
+  // g_signal_connect(web_view, "button-press-event",                   G_CALLBACK(on_click), NULL);
 
 
   // disable titlebar and border
