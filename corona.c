@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <webkit/webkit.h>
+#include <libconfig.h>
 
 #define SP_WM_TYPE_DESKTOP  "desktop"
 #define SP_WM_TYPE_DOCK     "dock"
@@ -26,14 +27,19 @@
 #define SP_WM_ALIGN_MIDDLE  "middle"
 #define SP_WM_ALIGN_END     "end"
 
+#define CR_APP_CONFIG       "app.cfg"
+
 gboolean supports_alpha = FALSE;
 
-static gchar* corona_find_application_by_name(gchar *name);
-static gchar* corona_application_path(gchar *path, gchar *name);
-static gchar* corona_path_suffix_index(gchar *uri);
-static gboolean on_click(GtkWidget *widget, GdkEventButton *event, gpointer user_data);
-static void on_show(GtkWidget *widget, gpointer user_data);
-static gboolean on_popup_window(
+static gchar*    corona_find_application_by_name(gchar *name);
+static gchar*    corona_application_path(gchar *path, gchar *name);
+static gchar*    corona_path_suffix_index(gchar *uri);
+static gboolean  corona_load_application_config(gchar *root, gchar *config_name);
+static void      corona_apply_flags(GtkWindow *window);
+
+static gboolean  on_click(GtkWidget *widget, GdkEventButton *event, gpointer user_data);
+static void      on_show(GtkWidget *widget, gpointer user_data);
+static gboolean  on_popup_window(
   WebKitWebView             *web_view,
   WebKitWebFrame            *frame,
   WebKitNetworkRequest      *request,
@@ -41,18 +47,18 @@ static gboolean on_popup_window(
   WebKitWebPolicyDecision   *policy_decision,
   gpointer                   user_data
 );
-static void on_page_load(
+static void      on_page_load(
   WebKitWebView             *web_view,
   WebKitWebFrame            *frame,
   gpointer                   user_data
 );
 
-static void screen_changed(GtkWidget *widget, GdkScreen *old_screen, gpointer user_data);
-static gboolean expose(GtkWidget *widget, GdkEventExpose *event, gpointer user_data);
-static void clicked(GtkWindow *win, GdkEventButton *event, gpointer user_data);
+static void      screen_changed(GtkWidget *widget, GdkScreen *old_screen, gpointer user_data);
+static gboolean  expose(GtkWidget *widget, GdkEventExpose *event, gpointer user_data);
+static void      clicked(GtkWindow *win, GdkEventButton *event, gpointer user_data);
 static cairo_surface_t* blur_image_surface(cairo_surface_t *surface, int radius, double sigma);
-static pixman_fixed_t* create_gaussian_blur_kernel(int radius, double sigma, int *length);
-static gboolean navigate(
+static pixman_fixed_t*  create_gaussian_blur_kernel(int radius, double sigma, int *length);
+static gboolean         navigate(
   WebKitWebView             *web_view,
   WebKitWebFrame            *frame,
   WebKitNetworkRequest      *request,
@@ -60,27 +66,27 @@ static gboolean navigate(
   WebKitWebPolicyDecision   *policy_decision,
   gpointer                   user_data);
 
-void corona_apply_flags(GtkWindow *window);
 
 static void destroy_cb(GtkWidget* widget, gpointer data) {
   gtk_main_quit();
 }
 
-static gboolean  start_hidden  = FALSE;
-static gboolean  show_in_panel = FALSE;
-static gchar*    wm_type       = 0;
-static gchar*    wm_layer      = SP_WM_LAYER_NORMAL;
-static gint      wm_width      = -1;
-static gint      wm_height     = -1;
-static gint      wm_xpos       = -1;
-static gint      wm_ypos       = -1;
-static gchar*    wm_dock       = NULL;
-static gchar*    wm_align      = NULL;
-static gboolean  wm_autostrut  = FALSE;
-static gboolean  wm_root_win   = FALSE;
-static gboolean  wm_decorator  = FALSE;
-static gchar*    sp_system     = "/usr/share/corona/apps";
-static gchar*    sp_user       = "~/.corona/apps";
+static config_t       config;
+static gboolean       start_hidden  = FALSE;
+static gboolean       show_in_panel = FALSE;
+static const char*    wm_type       = 0;
+static const char*    wm_layer      = SP_WM_LAYER_NORMAL;
+static int            wm_width      = -1;
+static int            wm_height     = -1;
+static int            wm_xpos       = -1;
+static int            wm_ypos       = -1;
+static const char*    wm_dock;
+static const char*    wm_align;
+static gboolean       wm_autostrut  = FALSE;
+static gboolean       wm_root_win   = FALSE;
+static gboolean       wm_decorator  = FALSE;
+static gchar*         sp_system     = "/usr/share/corona/apps";
+static gchar*         sp_user       = "~/.corona/apps";
 
 static GOptionEntry entries[] =
 {
@@ -103,7 +109,10 @@ static GOptionEntry entries[] =
 int main(int argc, char* argv[]) {
   GError *error = NULL;
   GOptionContext *context;
+  gchar *approot;
+  gchar *uri;
 
+//  gtk_init(&argc, &argv);
   context = g_option_context_new("- lightweight webkit browser");
   g_option_context_add_main_entries(context, entries, NULL);
   g_option_context_add_group(context, gtk_get_option_group(TRUE));
@@ -112,7 +121,43 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-//  gtk_init(&argc, &argv);
+  // first CLI argument is the page to load, otherwise go to blank
+  if(argc > 1){
+    uri = g_strdup(argv[1]);
+
+    if(!g_str_has_prefix(uri, "http") && !g_str_has_prefix(uri, "file")){
+      if(g_str_has_prefix(uri, "/")){
+        uri = corona_path_suffix_index(uri);
+      }else{
+        approot = corona_find_application_by_name(uri);
+
+        if(approot == NULL){
+          g_print("Could not find application '%s'\n", argv[1]);
+          return 64;
+        }
+
+        uri = corona_path_suffix_index(approot);
+      }
+
+      uri = g_strdup_printf("file://%s", uri);
+    }
+
+  }else{
+    g_print("Must specify an application name\n");
+    return 127;
+  }
+
+  if(corona_load_application_config(approot, CR_APP_CONFIG)){
+    g_print("Loading values from configration %s/%s\n", approot, CR_APP_CONFIG);
+    config_lookup_string(&config, "defaults.dock",   &wm_dock);
+    config_lookup_string(&config, "defaults.layer",  &wm_layer);
+    config_lookup_string(&config, "defaults.align",  &wm_align);
+
+    config_lookup_int(&config,    "defaults.width",  &wm_width);
+    config_lookup_int(&config,    "defaults.height", &wm_height);
+    config_lookup_int(&config,    "defaults.x",      &wm_xpos);
+    config_lookup_int(&config,    "defaults.y",      &wm_ypos);
+  }
 
   g_print("Initializing...\n");
   printf("[%s] = %d\n", "hide",              start_hidden);
@@ -207,32 +252,7 @@ int main(int argc, char* argv[]) {
   gtk_container_add(GTK_CONTAINER(layout), GTK_WIDGET(web_view));
   gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(layout));
 
-  // first CLI argument is the page to load, otherwise go to blank
-  if(argc > 1){
-    gchar *uri = g_strdup(argv[1]);
-
-    if(!g_str_has_prefix(uri, "http") && !g_str_has_prefix(uri, "file")){
-      if(g_str_has_prefix(uri, "/")){
-        uri = corona_path_suffix_index(uri);
-      }else{
-        uri = corona_find_application_by_name(uri);
-
-        if(uri == NULL){
-          g_print("Could not find application '%s'\n", argv[1]);
-          return 64;
-        }
-
-        uri = corona_path_suffix_index(uri);
-      }
-
-      uri = g_strdup_printf("file://%s", uri);
-    }
-
-    webkit_web_view_load_uri(web_view, uri);
-  }else{
-    g_print("Must specify an application name\n");
-    return 127;
-  }
+  webkit_web_view_load_uri(web_view, uri);
 
   // focus the window
   gtk_widget_grab_focus(GTK_WIDGET(web_view));
@@ -297,6 +317,27 @@ static gchar* corona_path_suffix_index(gchar *uri){
   }
 
   return uri;
+}
+
+static gboolean corona_load_application_config(gchar *root, gchar *config_name){
+  struct stat buffer;
+  gchar       *filename = NULL;
+
+  filename = g_strdup_printf("%s/%s", root, config_name);
+
+  if (stat(filename, &buffer) == 0){
+    config_init(&config);
+
+    if (!config_read_file(&config, filename)) {
+      fprintf(stderr, "Error reading configuration %s:%d - %s\n", config_error_file(&config), config_error_line(&config), config_error_text(&config));
+      config_destroy(&config);
+      return FALSE;
+    }
+
+    return TRUE;
+  }
+
+  return FALSE;
 }
 
 static void on_show(GtkWidget *widget, gpointer userdata){
