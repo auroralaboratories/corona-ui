@@ -1,2 +1,5 @@
-all:
-	npm install
+build:
+	./build.sh build
+deps:
+	./build.sh deps
+	
