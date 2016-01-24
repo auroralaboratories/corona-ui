@@ -111,19 +111,25 @@ static void clicked(GtkWindow *win, GdkEventButton *event, gpointer user_data)
 ## Necessary Functions
 
 ### gtk2
+```
 gtk_widget_set_app_paintable    gtk.SetAppPaintable()
 gtk_window_set_decorated        gtk.SetDecorated()
 gtk_widget_get_screen           NOT IMPLEMENTED, gtk.go@9600
 gtk_widget_set_colormap         NOT IMPLEMENTED, gtk.go@9488
+```
 
 ### gdk2
+```
 gdk_screen_get_rgba_colormap    MISSING, see: https://developer.gnome.org/gdk2/stable/GdkScreen.html#gdk-screen-get-rgba-colormap
 gdk_screen_get_rgb_colormap     MISSING, see: https://developer.gnome.org/gdk2/stable/GdkScreen.html#gdk-screen-get-rgb-colormap
 gdk_cairo_create                MISSING, see: https://developer.gnome.org/gdk2/stable/gdk2-Cairo-Interaction.html#gdk-cairo-create
+```
 
 ### cairo
+```
 cairo_set_source_rgba           MISSING, see: http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-source-rgba
 cairo_set_source_rgb            MISSING, see: http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-source-rgb
 cairo_set_operator              MISSING, see: http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-set-operator
 cairo_paint                     MISSING, see: http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-paint
 cairo_destroy                   MISSING, see: http://www.cairographics.org/manual/cairo-cairo-t.html#cairo-destroy
+```
