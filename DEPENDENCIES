@@ -1,7 +1,7 @@
 github.com/codegangsta/cli
 github.com/ghetzel/diecast
 github.com/ghodss/yaml
-github.com/mattn/go-gtk/gtk
-github.com/mattn/go-webkit/webkit
+github.com/auroralaboratories/go-gtk/gtk
+github.com/auroralaboratories/go-webkit/webkit
 github.com/shutterstock/go-stockutil
 github.com/Sirupsen/logrus

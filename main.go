@@ -10,8 +10,8 @@ import (
     "github.com/auroralaboratories/corona-ui/util"
     "github.com/codegangsta/cli"
     "github.com/ghetzel/diecast/diecast"
-    "github.com/mattn/go-gtk/gtk"
-    "github.com/mattn/go-webkit/webkit"
+    "github.com/auroralaboratories/go-gtk/gtk"
+    "github.com/auroralaboratories/go-webkit/webkit"
     log "github.com/Sirupsen/logrus"
 )
 
@@ -82,8 +82,16 @@ func main(){
         gtk.Init(nil)
         window := gtk.NewWindow(gtk.WINDOW_TOPLEVEL)
         window.SetTitle(util.ApplicationName)
-        window.SetOpacity(0.5)
+        // window.SetOpacity(0.5)
         window.Connect(`destroy`, gtk.MainQuit)
+
+        scr := window.GetScreen()
+        log.Infof("Screen for window: %+v (%T)", scr, scr)
+
+        if cmap := window.GetColormap(); cmap.GColormap != nil {
+            log.Infof("Setting colormap: %+v (%T)", cmap, cmap)
+            window.SetColormap(cmap)
+        }
 
         vbox := gtk.NewVBox(false, 1)
 
@@ -92,8 +100,8 @@ func main(){
 
         webview.LoadUri(fmt.Sprintf("http://%s:%d", dc.Address, dc.Port))
 
-        webview.Connect(`load-committed`, func() {
-            log.Infof("New URI: %s", webview.GetUri())
+        webview.Connect(`resource-load-finished`, func() {
+            log.Infof("Loaded %s", webview.GetUri())
         })
 
         vbox.Add(webview)

@@ -113,16 +113,16 @@ static void clicked(GtkWindow *win, GdkEventButton *event, gpointer user_data)
 ### gtk2
 * **gtk_widget_set_app_paintable**
 
-  Exists: gtk.SetAppPaintable()
+  Exists: gtk.Window.SetAppPaintable()
 * **gtk_window_set_decorated**
 
-  Exists: gtk.SetDecorated()
+  Exists: gtk.Window.SetDecorated()
 * **gtk_widget_get_screen**
 
-  NOT IMPLEMENTED: gtk.go@9600
+  New: gtk.Widget.GetScreen()
 * **gtk_widget_set_colormap**
 
-  NOT IMPLEMENTED, gtk.go@9488
+  New: gtk.Widget.SetColormap(*gdk.Colormap)
 
 ### gdk2
 * **gdk_screen_get_rgba_colormap**

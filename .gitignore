@@ -1,3 +1,6 @@
 /bin
 /node_modules
 *.log
+/gopath/pkg
+/gopath/bin
+/ui
