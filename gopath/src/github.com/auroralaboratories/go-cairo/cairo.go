@@ -395,3 +395,7 @@ func Version() int {
 func VersionString() string {
 	return C.GoString(C.cairo_version_string())
 }
+
+func GetTarget(context Cairo_context) Cairo_surface {
+	return C.cairo_get_target(context)
+}

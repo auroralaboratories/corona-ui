@@ -6,11 +6,13 @@ import (
     "os"
     "strconv"
     "strings"
+    "unsafe"
 
     "github.com/auroralaboratories/corona-ui/util"
     "github.com/codegangsta/cli"
     "github.com/ghetzel/diecast/diecast"
     "github.com/auroralaboratories/go-gtk/gtk"
+    "github.com/auroralaboratories/go-gtk/glib"
     "github.com/auroralaboratories/go-cairo"
     "github.com/auroralaboratories/go-webkit/webkit"
     log "github.com/Sirupsen/logrus"
@@ -22,7 +24,6 @@ const (
     DEFAULT_UI_CONFIG_FILE   = `ui/config.yml`
 )
 
-var window *gtk.Window
 var useAlpha bool
 
 func main(){
@@ -85,87 +86,58 @@ func main(){
         }
 
         gtk.Init(nil)
-        window = gtk.NewWindow(gtk.WINDOW_TOPLEVEL)
-        window.SetSizeRequest(600, 600)
-        window.SetTitle(util.ApplicationName)
-        window.Connect(`destroy`, gtk.MainQuit)
-        window.SetAppPaintable(true)
-        // window.SetOpacity(0.75)
 
-        // static void screen_changed(GtkWidget *widget, GdkScreen *old_screen, gpointer userdata)
-        if i := window.Connect("screen-changed", UpdateScreen); i > 0 {
-            log.Infof("Connected to 'screen-changed' signal: handler ID %d", i)
-        }
-
-        if i := window.Connect("expose-event", ExposeEvent); i > 0 {
-            log.Infof("Connected to 'expose-event' signal: handler ID %d", i)
-        }
-
-        // scr := window.GetScreen()
-        // log.Infof("Screen for window: %+v (%T)", scr, scr)
-
-        // if scr.IsComposited() {
-        //     cm := scr.GetRGBAColormap()
-        //     log.Infof("Screen is composited; cmap=%+v", cm)
-        // }else{
-        //     cm := scr.GetRGBColormap()
-        //     log.Warnf("Screen is not composited; cmap=%+v", cm)
-        // }
-
-        // if cmap := window.GetColormap(); cmap.GColormap != nil {
-        //     log.Infof("Setting colormap: %+v (%T)", cmap, cmap)
-        //     window.SetColormap(cmap)
-        // }
-
-
-        log.Infof("Current opacity: %f", window.GetOpacity())
-
-        vbox := gtk.NewVBox(false, 1)
-
+        window  := gtk.NewWindow(gtk.WINDOW_TOPLEVEL)
+        layout  := gtk.NewScrolledWindow(nil, nil)
         webview := webkit.NewWebView()
-        webview.SetTransparent(true)
+        webset  := webkit.NewWebSettings()
 
-        webview.LoadUri(fmt.Sprintf("http://%s:%d", dc.Address, dc.Port))
+        window.Connect(`destroy`,         gtk.MainQuit)
+
+        layout.Connect(`screen-changed`,  UpdateScreen)
+        layout.Connect(`expose-event`,    ExposeEvent)
+
+        webview.Connect(`screen-changed`, UpdateScreen)
+        webview.Connect(`expose-event`,   ExposeEvent)
 
         webview.Connect(`resource-load-finished`, func() {
             log.Infof("Loaded %s", webview.GetUri())
         })
 
-        vbox.Add(webview)
+        window.SetAppPaintable(true)
+        layout.SetAppPaintable(true)
 
-        // entry.Connect("activate", func() {
 
-        // })
-        // button := gtk.NewButtonWithLabel("load String")
-        // button.Clicked(func() {
-        //     webview.LoadString("hello Go GTK!", "text/plain", "utf-8", ".")
-        // })
-        // vbox.PackStart(button, false, false, 0)
+        webset.Set("auto-load-images",                  true)
+        webset.Set("auto-resize-window",                false)
+        webset.Set("enable-plugins",                    true)
+        webset.Set("enable-scripts",                    true)
+        webset.Set("enable-accelerated-compositing",    true)
+        webset.Set("enable-webgl",                      true)
+        webset.Set("enable-webaudio",                   true)
+        webset.Set("enable-file-access-from-file-uris", true)
 
-        // button = gtk.NewButtonWithLabel("load HTML String")
-        // button.Clicked(func() {
-        //     webview.LoadHtmlString(HTML_STRING, ".")
-        // })
-        // vbox.PackStart(button, false, false, 0)
+        webview.SetSettings(webset)
+        webview.SetTransparent(true)
 
-        // button = gtk.NewButtonWithLabel("Google Maps")
-        // button.Clicked(func() {
-        //     webview.LoadHtmlString(MAP_EMBED, ".")
-        // })
-        // vbox.PackStart(button, false, false, 0)
+        layout.Add(webview)
+        window.Add(layout)
 
-        window.Add(vbox)
+        webview.LoadUri(fmt.Sprintf("http://%s:%d", dc.Address, dc.Port))
 
-        UpdateScreen()
+        window.SetSizeRequest(600, 600)
+
+
+        UpdateWidgetScreen(gtk.WidgetFromNative(unsafe.Pointer(window.ToNative())))
 
         window.ShowAll()
 
-        proxy := os.Getenv(`HTTP_PROXY`)
-        if len(proxy) > 0 {
-            soup_uri := webkit.SoupUri(proxy)
-            webkit.GetDefaultSession().Set(`proxy-uri`, soup_uri)
-            soup_uri.Free()
-        }
+        // proxy := os.Getenv(`HTTP_PROXY`)
+        // if len(proxy) > 0 {
+        //     soup_uri := webkit.SoupUri(proxy)
+        //     webkit.GetDefaultSession().Set(`proxy-uri`, soup_uri)
+        //     soup_uri.Free()
+        // }
 
         gtk.Main()
     }
@@ -212,41 +184,57 @@ func main(){
 }
 
 
-func UpdateScreen() {
-    log.Debugf("Got screen-changed")
-    screen := window.GetScreen()
-
-    if screen.IsComposited() {
-        useAlpha = true
-        window.SetColormap(screen.GetRGBAColormap())
-    }else{
-        useAlpha = false
-        window.SetColormap(screen.GetRGBColormap())
+func UpdateScreen(ctx *glib.CallbackContext) {
+    if tgt := ctx.Target(); tgt != nil {
+        widget := gtk.WidgetFromObject(tgt.(*glib.GObject))
+        UpdateWidgetScreen(widget)
     }
 }
 
-func ExposeEvent() {
-    width, height := window.GetSize()
+func UpdateWidgetScreen(widget *gtk.Widget) {
+    log.Debugf("screen-changed widget: %T %+v", widget, widget)
 
-    log.Debugf("Got expose-event; window w=%d, h=%d", width, height)
+    screen := widget.GetScreen()
 
-    if parentWindow := window.GetParentWindow(); parentWindow != nil {
-        destSurface := parentWindow.CairoCreateSimilarSurface(cairo.CONTENT_COLOR_ALPHA, width, height)
+    if screen.IsComposited() {
+        log.Infof("Compositing is enabled")
+        useAlpha = true
+        widget.SetColormap(screen.GetRGBAColormap())
+    }else{
+        log.Warnf("Compositing is disabled")
+        useAlpha = false
+        widget.SetColormap(screen.GetRGBColormap())
+    }
+}
 
-        if drawable := parentWindow.GetDrawable(); drawable != nil {
-            context := drawable.CairoCreate()
+func ExposeEvent(ctx *glib.CallbackContext) {
+    if tgt := ctx.Target(); tgt != nil {
+        widget := gtk.WidgetFromObject(tgt.(*glib.GObject))
+        log.Debugf("expose-event widget: %T %+v", widget, widget)
 
-            if surface := cairo.NewSurfaceFromC(destSurface, context); surface != nil {
-                if useAlpha {
-                    surface.SetSourceRGBA(1.0, 1.0, 1.0, 0.0)
+        if window := widget.GetParentWindow(); window != nil {
+            if drawable := window.GetDrawable(); drawable != nil {
+                context := drawable.CairoCreate()
+                target  := cairo.GetTarget(context)
+
+                if surface := cairo.NewSurfaceFromC(target, context); surface != nil {
+                    if useAlpha {
+                        surface.SetSourceRGBA(0.0, 0.1647, 1.0, 0.5)
+                    }else{
+                        surface.SetSourceRGB(1.0, 1.0, 1.0)
+                    }
+
+                    surface.SetOperator(cairo.OPERATOR_SOURCE)
+                    surface.Paint()
+                    surface.Destroy()
                 }else{
-                    surface.SetSourceRGB(1.0, 1.0, 1.0)
+                    log.Debugf("expose-event: failed to create cairo surface of %+v", widget)
                 }
-
-                surface.SetOperator(cairo.OPERATOR_SOURCE)
-                surface.Paint()
-                surface.Destroy()
+            }else{
+                log.Debugf("expose-event: failed to get drawable surface of %+v", widget)
             }
+        }else{
+            log.Debugf("expose-event: failed to get parent window of %+v", widget)
         }
     }
 }
