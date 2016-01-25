@@ -127,11 +127,11 @@ static void clicked(GtkWindow *win, GdkEventButton *event, gpointer user_data)
 ### gdk2
 * **gdk_screen_get_rgba_colormap**
 
-  MISSING, see: https://developer.gnome.org/gdk2/stable/GdkScreen.html#gdk-screen-get-rgba-colormap
+  New: gdk.Screen.GetRGBAColormap() *gdk.Colormap
 
 * **gdk_screen_get_rgb_colormap**
 
-  MISSING, see: https://developer.gnome.org/gdk2/stable/GdkScreen.html#gdk-screen-get-rgb-colormap
+  New: gdk.Screen.GetRGBColormap() *gdk.Colormap
 
 * **gdk_cairo_create**
 

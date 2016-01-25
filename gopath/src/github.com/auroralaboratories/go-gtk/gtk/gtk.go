@@ -1377,11 +1377,10 @@ func (v *Window) GetPosition(root_x *int, root_y *int) {
 
 // gtk_window_get_role
 
-func (v *Window) GetSize(width *int, height *int) {
+func (v *Window) GetSize() (int, int) {
 	var cwidth, cheight C.gint
 	C.gtk_window_get_size(WINDOW(v), &cwidth, &cheight)
-	*width = int(cwidth)
-	*height = int(cheight)
+	return int(cwidth), int(cheight)
 }
 func (v *Window) GetTitle() string {
 	return gostring(C.gtk_window_get_title(WINDOW(v)))
@@ -1439,8 +1438,15 @@ func (v *Window) SetIconName(name string) {
 }
 
 // gtk_window_set_auto_startup_notification
-// gtk_window_get_opacity
-// gtk_window_set_opacity
+
+func (v *Window) GetOpacity() float64 {
+	return float64(C.gtk_window_get_opacity(WINDOW(v)))
+}
+
+func (v *Window) SetOpacity(opacity float64) {
+	C.gtk_window_set_opacity(WINDOW(v), gdouble(opacity))
+}
+
 // gtk_window_get_mnemonics_visible //since 2.20
 // gtk_window_set_mnemonics_visible //since 2.20
 

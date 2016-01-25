@@ -10,10 +10,12 @@ import (
 
 	"github.com/auroralaboratories/go-gtk/gdkpixbuf"
 	"github.com/auroralaboratories/go-gtk/pango"
+	"github.com/auroralaboratories/go-cairo"
 )
 
 func guint16(v uint16) C.guint16 { return C.guint16(v) }
 func gint(v int) C.gint          { return C.gint(v) }
+func cint(v int) C.int           { return C.int(v) }
 func gstring(s *C.char) *C.gchar { return C.toGstr(s) }
 
 func gbool(b bool) C.gboolean {
@@ -328,11 +330,27 @@ type Screen struct {
 	GScreen *C.GdkScreen
 }
 
+func (v *Screen) GetRGBAColormap() *Colormap {
+	// panic_if_version_older(2, 8, 0, "gdk_screen_get_rgb_colormap()")
+	return &Colormap{C.gdk_screen_get_rgba_colormap(v.GScreen)}
+}
+
+func (v *Screen) GetRGBColormap() *Colormap {
+	// panic_if_version_older(2, 8, 0, "gdk_screen_get_rgb_colormap()")
+	return &Colormap{C.gdk_screen_get_rgb_colormap(v.GScreen)}
+}
+
+func (v *Screen) IsComposited() bool {
+	// panic_if_version_older(2, 10, 0, "gdk_screen_is_composited()")
+	return gobool(C.gdk_screen_is_composited(v.GScreen))
+}
+
 func ScreenFromUnsafe(screen unsafe.Pointer) *Screen {
 	return &Screen{
 		GScreen: C.toGdkScreen(screen),
 	}
 }
+
 
 // GdkScreen * gdk_gc_get_screen (GdkGC *gc);
 
@@ -376,6 +394,13 @@ func (v *Drawable) DrawString(font *Font, gc *GC, x int, y int, str string) {
 // void gdk_draw_text_wc (GdkDrawable *drawable, GdkFont *font, GdkGC *gc, gint x, gint y, const GdkWChar *text, gint text_length);
 func (v *Drawable) DrawDrawable(gc *GC, src *Drawable, xsrc int, ysrc int, xdest int, ydest int, width int, height int) {
 	C.gdk_draw_drawable(v.GDrawable, gc.GGC, src.GDrawable, gint(xsrc), gint(ysrc), gint(xdest), gint(ydest), gint(width), gint(height))
+}
+
+// Cairo Interaction
+//
+func (v *Drawable) CairoCreate() cairo.Cairo_context {
+	ptr := unsafe.Pointer(C.gdk_cairo_create(v.GDrawable))
+	return cairo.Cairo_context(ptr)
 }
 
 // void gdk_draw_image (GdkDrawable *drawable, GdkGC *gc, GdkImage *image, gint xsrc, gint ysrc, gint xdest, gint ydest, gint width, gint height);
@@ -626,6 +651,12 @@ func (v *Window) Show() {
 
 func (v *Window) Raise() {
 	C.gdk_window_raise(v.GWindow)
+}
+
+// Cairo Interaction
+func (v *Window) CairoCreateSimilarSurface(content cairo.Content, width int, height int) cairo.Cairo_surface {
+	ptr := unsafe.Pointer(C.gdk_window_create_similar_surface(v.GWindow, C.toCairoContentT(cint(int(content))), cint(width), cint(height)))
+	return cairo.Cairo_surface(ptr)
 }
 
 //-----------------------------------------------------------------------

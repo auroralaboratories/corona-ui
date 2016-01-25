@@ -11,6 +11,7 @@ import (
     "github.com/codegangsta/cli"
     "github.com/ghetzel/diecast/diecast"
     "github.com/auroralaboratories/go-gtk/gtk"
+    "github.com/auroralaboratories/go-cairo"
     "github.com/auroralaboratories/go-webkit/webkit"
     log "github.com/Sirupsen/logrus"
 )
@@ -20,6 +21,9 @@ const (
     DEFAULT_UI_STATIC_PATH   = `ui/static`
     DEFAULT_UI_CONFIG_FILE   = `ui/config.yml`
 )
+
+var window *gtk.Window
+var useAlpha bool
 
 func main(){
     app                      := cli.NewApp()
@@ -35,6 +39,7 @@ func main(){
         }
 
         log.Infof("%s v%s started at %s", util.ApplicationName, util.ApplicationVersion, util.StartedAt)
+
 
         dc              := diecast.NewServer()
         dc.Address       = c.String(`address`)
@@ -80,23 +85,45 @@ func main(){
         }
 
         gtk.Init(nil)
-        window := gtk.NewWindow(gtk.WINDOW_TOPLEVEL)
+        window = gtk.NewWindow(gtk.WINDOW_TOPLEVEL)
+        window.SetSizeRequest(600, 600)
         window.SetTitle(util.ApplicationName)
-        // window.SetOpacity(0.5)
         window.Connect(`destroy`, gtk.MainQuit)
+        window.SetAppPaintable(true)
+        // window.SetOpacity(0.75)
 
-        scr := window.GetScreen()
-        log.Infof("Screen for window: %+v (%T)", scr, scr)
-
-        if cmap := window.GetColormap(); cmap.GColormap != nil {
-            log.Infof("Setting colormap: %+v (%T)", cmap, cmap)
-            window.SetColormap(cmap)
+        // static void screen_changed(GtkWidget *widget, GdkScreen *old_screen, gpointer userdata)
+        if i := window.Connect("screen-changed", UpdateScreen); i > 0 {
+            log.Infof("Connected to 'screen-changed' signal: handler ID %d", i)
         }
+
+        if i := window.Connect("expose-event", ExposeEvent); i > 0 {
+            log.Infof("Connected to 'expose-event' signal: handler ID %d", i)
+        }
+
+        // scr := window.GetScreen()
+        // log.Infof("Screen for window: %+v (%T)", scr, scr)
+
+        // if scr.IsComposited() {
+        //     cm := scr.GetRGBAColormap()
+        //     log.Infof("Screen is composited; cmap=%+v", cm)
+        // }else{
+        //     cm := scr.GetRGBColormap()
+        //     log.Warnf("Screen is not composited; cmap=%+v", cm)
+        // }
+
+        // if cmap := window.GetColormap(); cmap.GColormap != nil {
+        //     log.Infof("Setting colormap: %+v (%T)", cmap, cmap)
+        //     window.SetColormap(cmap)
+        // }
+
+
+        log.Infof("Current opacity: %f", window.GetOpacity())
 
         vbox := gtk.NewVBox(false, 1)
 
         webview := webkit.NewWebView()
-        // webview.SetTransparent(true)
+        webview.SetTransparent(true)
 
         webview.LoadUri(fmt.Sprintf("http://%s:%d", dc.Address, dc.Port))
 
@@ -128,7 +155,9 @@ func main(){
         // vbox.PackStart(button, false, false, 0)
 
         window.Add(vbox)
-        window.SetSizeRequest(600, 600)
+
+        UpdateScreen()
+
         window.ShowAll()
 
         proxy := os.Getenv(`HTTP_PROXY`)
@@ -180,4 +209,44 @@ func main(){
     }
 
     app.Run(os.Args)
+}
+
+
+func UpdateScreen() {
+    log.Debugf("Got screen-changed")
+    screen := window.GetScreen()
+
+    if screen.IsComposited() {
+        useAlpha = true
+        window.SetColormap(screen.GetRGBAColormap())
+    }else{
+        useAlpha = false
+        window.SetColormap(screen.GetRGBColormap())
+    }
+}
+
+func ExposeEvent() {
+    width, height := window.GetSize()
+
+    log.Debugf("Got expose-event; window w=%d, h=%d", width, height)
+
+    if parentWindow := window.GetParentWindow(); parentWindow != nil {
+        destSurface := parentWindow.CairoCreateSimilarSurface(cairo.CONTENT_COLOR_ALPHA, width, height)
+
+        if drawable := parentWindow.GetDrawable(); drawable != nil {
+            context := drawable.CairoCreate()
+
+            if surface := cairo.NewSurfaceFromC(destSurface, context); surface != nil {
+                if useAlpha {
+                    surface.SetSourceRGBA(1.0, 1.0, 1.0, 0.0)
+                }else{
+                    surface.SetSourceRGB(1.0, 1.0, 1.0)
+                }
+
+                surface.SetOperator(cairo.OPERATOR_SOURCE)
+                surface.Paint()
+                surface.Destroy()
+            }
+        }
+    }
 }
