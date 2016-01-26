@@ -2,6 +2,7 @@ package main
 
 import (
     "fmt"
+    "io/ioutil"
     "net"
     "os"
     "strconv"
@@ -9,32 +10,69 @@ import (
     "unsafe"
 
     "github.com/auroralaboratories/corona-ui/util"
-    "github.com/codegangsta/cli"
-    "github.com/ghetzel/diecast/diecast"
-    "github.com/auroralaboratories/go-gtk/gtk"
+    "github.com/auroralaboratories/go-cairo"
     "github.com/auroralaboratories/go-gtk/gdk"
     "github.com/auroralaboratories/go-gtk/glib"
-    "github.com/auroralaboratories/go-cairo"
+    "github.com/auroralaboratories/go-gtk/gtk"
     "github.com/auroralaboratories/go-webkit/webkit"
+    "github.com/codegangsta/cli"
+    "github.com/ghetzel/diecast/diecast"
+    "gopkg.in/yaml.v2"
     log "github.com/Sirupsen/logrus"
 )
 
 const (
-    DEFAULT_UI_TEMPLATE_PATH = `ui/src`
-    DEFAULT_UI_STATIC_PATH   = `ui/static`
-    DEFAULT_UI_CONFIG_FILE   = `ui/config.yml`
+    DEFAULT_UI_TEMPLATE_PATH = `src`
+    DEFAULT_UI_STATIC_PATH   = `static`
+    DEFAULT_UI_CONFIG_FILE   = `config.yml`
 )
 
 type Color struct {
-    Red   float64
-    Green float64
-    Blue  float64
-    Alpha float64
+    Red   float64     `yaml:"red"`
+    Green float64     `yaml:"green"`
+    Blue  float64     `yaml:"blue"`
+    Alpha float64     `yaml:"alpha"`
 }
 
-var enableAlpha bool
+type WindowConfig struct {
+    Width       int     `yaml:"width"`
+    Height      int     `yaml:"height"`
+    X           int     `yaml:"x"`
+    Y           int     `yaml:"y"`
+    Background  Color   `yaml:"background"`
+    Frame       bool    `yaml:"frame"`
+    Position    string  `yaml:"position"`
+    Resizable   bool    `yaml:"resizable"`
+    Stacking    string  `yaml:"stacking"`
+    Transparent bool    `yaml:"transparent"`
+    Type        string  `yaml:"type"`
+}
+
+type Config struct {
+    Window WindowConfig `yaml:"window"`
+}
+
 var useAlpha    bool
-var bgColor     Color
+var config      Config = Config{
+    Window: WindowConfig{
+        Width:        0,
+        Height:       0,
+        X:           -1,
+        Y:           -1,
+        Background:  Color{
+            Red:   1.0,
+            Green: 1.0,
+            Blue:  1.0,
+            Alpha: 0.0,
+        },
+        Frame:       true,
+        Position:    ``,
+        Resizable:   true,
+        Stacking:    ``,
+        Transparent: false,
+        Type:        ``,
+    },
+}
 
 func main(){
     app                      := cli.NewApp()
@@ -51,20 +89,20 @@ func main(){
 
         log.Infof("%s v%s started at %s", util.ApplicationName, util.ApplicationVersion, util.StartedAt)
 
+        if data, err := ioutil.ReadFile(c.String(`config`)); err == nil {
+            log.Debugf("Default Configuration: %+v", config)
+
+            if err := yaml.Unmarshal(data, &config); err == nil {
+                log.Infof("Successfully loaded configuration file: %s", c.String(`config`))
+                log.Debugf("Configuration: %+v", config)
+            }
+        }
 
         dc              := diecast.NewServer()
         dc.Address       = c.String(`address`)
         dc.TemplatePath  = c.String(`template-dir`)
         dc.StaticPath    = c.String(`static-dir`)
-        dc.ConfigPath    = c.String(`ui-config`)
-
-        enableAlpha      = c.Bool(`gtk-transparent`)
-        bgColor          = Color{
-            Red:   c.Float64(`window-bg-red`),
-            Green: c.Float64(`window-bg-green`),
-            Blue:  c.Float64(`window-bg-blue`),
-            Alpha: c.Float64(`window-bg-alpha`),
-        }
+        dc.ConfigPath    = c.String(`config`)
 
         if c.Bool(`quiet`) {
             dc.LogLevel = `quiet`
@@ -106,30 +144,59 @@ func main(){
         gtk.Init(nil)
 
         window  := gtk.NewWindow(gtk.WINDOW_TOPLEVEL)
-        layout  := gtk.NewScrolledWindow(nil, nil)
+        layout  := gtk.NewAlignment(1.0, 1.0, 1.0, 1.0)
+
         webview := webkit.NewWebView()
         webset  := webkit.NewWebSettings()
 
         window.Connect(`destroy`,         gtk.MainQuit)
+        window.Connect(`realize`, func(){
+        //  move window
+            if pos := config.Window.Position; pos == `` {
+                if x := config.Window.X; x >= 0 {
+                    if y := config.Window.Y; y >= 0 {
+                        window.Move(x, y)
+                    }
+                }
+            }else{
+                var position gtk.WindowPosition
 
-        if c.Bool(`gtk-connect-render-signals`) {
-            // window.Connect(`screen-changed`,  UpdateScreen)
-            // window.Connect(`expose-event`,    ExposeEvent)
+                switch pos {
+                case `center`:
+                    position = gtk.WIN_POS_CENTER
+                case `mouse`:
+                    position = gtk.WIN_POS_MOUSE
+                case `center_always`:
+                    position = gtk.WIN_POS_CENTER_ALWAYS
+                case `center_parent`:
+                    position = gtk.WIN_POS_CENTER_ON_PARENT
+                default:
+                    position = gtk.WIN_POS_NONE
+                }
 
+                window.SetPosition(position)
+            }
+
+        })
+
+        // window.Connect(`screen-changed`,  UpdateScreen)
+        // window.Connect(`expose-event`,    ExposeEvent)
+
+    //  hook up the drawing routines if we're going to be transparent
+        if config.Window.Transparent {
             layout.Connect(`screen-changed`,  UpdateScreen)
             layout.Connect(`expose-event`,    ExposeEvent)
 
             webview.Connect(`screen-changed`, UpdateScreen)
             webview.Connect(`expose-event`,   ExposeEvent)
+
+            layout.SetAppPaintable(true)
+            window.SetAppPaintable(true)
         }
 
         webview.Connect(`resource-load-finished`, func() {
             log.Infof("Loaded %s", webview.GetUri())
         })
-
-        layout.SetAppPaintable(true)
-        window.SetAppPaintable(true)
-        // webview.SetAppPaintable(true)
 
         webset.Set("auto-load-images",                  true)
         webset.Set("auto-resize-window",                false)
@@ -141,10 +208,10 @@ func main(){
         webset.Set("enable-file-access-from-file-uris", true)
 
         webview.SetSettings(webset)
-        webview.SetTransparent(c.Bool(`webkit-transparent`))
+        webview.SetTransparent(config.Window.Transparent)
 
         if webview.GetTransparent() {
-            log.Infof("WebKit transparent window enabled")
+            log.Debugf("WebKit transparent window enabled")
         }
 
         layout.Add(webview)
@@ -156,7 +223,64 @@ func main(){
             webview.LoadUri(fmt.Sprintf("http://%s:%d", dc.Address, dc.Port))
         }
 
-        window.SetSizeRequest(600, 600)
+    //  size window
+        if w := config.Window.Width; w > 0 {
+            if h := config.Window.Height; h > 0 {
+                window.SetSizeRequest(w, h)
+            }
+        }
+
+    //  set window stack preference
+        if stacking := config.Window.Stacking; stacking != `` {
+            switch stacking {
+            case `modal`:
+                window.SetModal(true)
+            case `above`:
+                window.SetKeepAbove(true)
+            case `below`:
+                window.SetKeepBelow(true)
+            }
+        }
+
+    //  resizable?
+        window.SetResizable(config.Window.Resizable)
+
+    //  decorated? (has window frame)
+        window.SetDecorated(config.Window.Frame)
+
+    //  set window type hint
+        if typ := config.Window.Type; typ != `` {
+            switch typ {
+            case `normal`:
+                window.SetTypeHint(gdk.WINDOW_TYPE_HINT_NORMAL)
+            case `dialog`:
+                window.SetTypeHint(gdk.WINDOW_TYPE_HINT_DIALOG)
+            case `menu`:
+                window.SetTypeHint(gdk.WINDOW_TYPE_HINT_MENU)
+            case `toolbar`:
+                window.SetTypeHint(gdk.WINDOW_TYPE_HINT_TOOLBAR)
+            case `splashscreen`:
+                window.SetTypeHint(gdk.WINDOW_TYPE_HINT_SPLASHSCREEN)
+            case `utility`:
+                window.SetTypeHint(gdk.WINDOW_TYPE_HINT_UTILITY)
+            case `dock`:
+                window.SetTypeHint(gdk.WINDOW_TYPE_HINT_DOCK)
+            case `desktop`:
+                window.SetTypeHint(gdk.WINDOW_TYPE_HINT_DESKTOP)
+            case `dropdown_menu`:
+                window.SetTypeHint(gdk.WINDOW_TYPE_HINT_DROPDOWN_MENU)
+            case `popup_menu`:
+                window.SetTypeHint(gdk.WINDOW_TYPE_HINT_POPUP_MENU)
+            case `tooltip`:
+                window.SetTypeHint(gdk.WINDOW_TYPE_HINT_TOOLTIP)
+            case `notification`:
+                window.SetTypeHint(gdk.WINDOW_TYPE_HINT_NOTIFICATION)
+            case `combo`:
+                window.SetTypeHint(gdk.WINDOW_TYPE_HINT_COMBO)
+            case `dnd`:
+                window.SetTypeHint(gdk.WINDOW_TYPE_HINT_DND)
+            }
+        }
 
         UpdateWidgetScreen(gtk.WidgetFromNative(unsafe.Pointer(window.ToNative())))
 
@@ -204,41 +328,9 @@ func main(){
             Value:  DEFAULT_UI_STATIC_PATH,
         },
         cli.StringFlag{
-            Name:   `ui-config, c`,
-            Usage:  `The path to the UI configuration file`,
+            Name:   `config, c`,
+            Usage:  `The path to the configuration file`,
             Value:  DEFAULT_UI_CONFIG_FILE,
-        },
-        cli.BoolTFlag{
-            Name:   `webkit-transparent`,
-            Usage:  `WebKit: whether to enable WebKit transparent window support`,
-        },
-        cli.BoolTFlag{
-            Name:   `gtk-transparent`,
-            Usage:  `GTK: whether to enable transparent background rendering`,
-        },
-        cli.BoolTFlag{
-            Name:   `gtk-connect-render-signals`,
-            Usage:  `GTK: whether to connect the rendering signals`,
-        },
-        cli.Float64Flag{
-            Name:   `window-bg-red`,
-            Usage:  `Window background control: red (0.0 <= x <= 1.0)`,
-            Value:  1.0,
-        },
-        cli.Float64Flag{
-            Name:   `window-bg-green`,
-            Usage:  `Window background control: green (0.0 <= x <= 1.0)`,
-            Value:  1.0,
-        },
-        cli.Float64Flag{
-            Name:   `window-bg-blue`,
-            Usage:  `Window background control: blue (0.0 <= x <= 1.0)`,
-            Value:  1.0,
-        },
-        cli.Float64Flag{
-            Name:   `window-bg-alpha`,
-            Usage:  `Window background control: alpha (0.0 <= x <= 1.0)`,
-            Value:  0.0,
         },
     }
 
@@ -256,12 +348,10 @@ func UpdateScreen(ctx *glib.CallbackContext) {
 }
 
 func UpdateWidgetScreen(widget *gtk.Widget) {
-    log.Debugf("screen-changed widget: %T %+v", widget, widget)
-
     screen := widget.GetScreen()
     var colormap *gdk.Colormap
 
-    if screen.IsComposited() && enableAlpha {
+    if screen.IsComposited() && config.Window.Transparent {
         log.Infof("Compositing is enabled")
         useAlpha = true
         colormap = screen.GetRGBAColormap()
@@ -289,9 +379,9 @@ func ExposeEvent(ctx *glib.CallbackContext) {
 
                     if surface := cairo.NewSurfaceFromC(target, context); surface != nil {
                         if useAlpha {
-                            surface.SetSourceRGBA(bgColor.Red, bgColor.Green, bgColor.Blue, bgColor.Alpha)
+                            surface.SetSourceRGBA(config.Window.Background.Red, config.Window.Background.Green, config.Window.Background.Blue, config.Window.Background.Alpha)
                         }else{
-                            surface.SetSourceRGB(bgColor.Red, bgColor.Green, bgColor.Blue)
+                            surface.SetSourceRGB(config.Window.Background.Red, config.Window.Background.Green, config.Window.Background.Blue)
                         }
 
                         surface.SetOperator(cairo.OPERATOR_SOURCE)
