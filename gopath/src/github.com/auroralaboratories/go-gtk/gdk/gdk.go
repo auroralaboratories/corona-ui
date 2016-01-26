@@ -653,6 +653,14 @@ func (v *Window) Raise() {
 	C.gdk_window_raise(v.GWindow)
 }
 
+func (v *Window) GetWidth() int {
+	return int(C.gdk_window_get_width(v.GWindow))
+}
+
+func (v *Window) GetHeight() int {
+	return int(C.gdk_window_get_height(v.GWindow))
+}
+
 // Cairo Interaction
 func (v *Window) CairoCreateSimilarSurface(content cairo.Content, width int, height int) cairo.Cairo_surface {
 	ptr := unsafe.Pointer(C.gdk_window_create_similar_surface(v.GWindow, C.toCairoContentT(cint(int(content))), cint(width), cint(height)))

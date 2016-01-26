@@ -399,3 +399,7 @@ func VersionString() string {
 func GetTarget(context Cairo_context) Cairo_surface {
 	return C.cairo_get_target(context)
 }
+
+func Destroy(context Cairo_context) {
+	C.cairo_destroy(context)
+}

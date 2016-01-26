@@ -417,6 +417,9 @@ static gboolean _gtk_widget_get_receives_default(GtkWidget *widget) {
 static void _gtk_widget_set_colormap(GtkWidget *widget, GdkColormap *colormap) {
 	gtk_widget_set_colormap(widget, colormap);
 }
+static void _gtk_widget_set_default_colormap(GdkColormap *colormap) {
+	gtk_widget_set_default_colormap(colormap);
+}
 static GtkWidget* _gtk_info_bar_new() {
 	return gtk_info_bar_new();
 }

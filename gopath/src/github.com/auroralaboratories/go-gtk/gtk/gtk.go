@@ -9510,7 +9510,11 @@ func (v *Widget) HideOnDelete() {
 // gtk_widget_reset_rc_styles
 // gtk_widget_push_colormap
 // gtk_widget_pop_colormap
-// gtk_widget_set_default_colormap
+
+func SetDefaultWidgetColormap(colormap *gdk.Colormap) {
+	C._gtk_widget_set_default_colormap(C.toGdkColormap(unsafe.Pointer(colormap.GColormap)))
+}
+
 // gtk_widget_get_default_style
 // gtk_widget_get_default_colormap
 // gtk_widget_get_default_visual

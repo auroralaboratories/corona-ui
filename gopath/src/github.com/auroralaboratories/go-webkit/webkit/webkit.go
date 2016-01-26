@@ -157,7 +157,7 @@ func (v *WebView) CanCutClipboard() bool {
 func (v *WebView) CanCopyClipboard() bool {
 	return gboolean2bool(C.webkit_web_view_can_copy_clipboard(v.getWebView()))
 }
-func (v *WebView) CanPasteCilpboard() bool {
+func (v *WebView) CanPasteClipboard() bool {
 	return gboolean2bool(C.webkit_web_view_can_paste_clipboard(v.getWebView()))
 }
 func (v *WebView) CutClipboard() {
@@ -166,7 +166,7 @@ func (v *WebView) CutClipboard() {
 func (v *WebView) CopyClipboard() {
 	C.webkit_web_view_copy_clipboard(v.getWebView())
 }
-func (v *WebView) PasteCilpboard() {
+func (v *WebView) PasteClipboard() {
 	C.webkit_web_view_paste_clipboard(v.getWebView())
 }
 func (v *WebView) DeleteSelection() {
