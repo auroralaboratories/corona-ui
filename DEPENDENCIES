@@ -1,8 +1,7 @@
-github.com/auroralaboratories/go-cairo
-github.com/auroralaboratories/go-gtk/gtk
-github.com/auroralaboratories/go-webkit/webkit
 github.com/codegangsta/cli
 github.com/ghetzel/diecast
+github.com/gotk3/gotk3/gtk
 github.com/shutterstock/go-stockutil
 github.com/Sirupsen/logrus
+github.com/auroralaboratories/go-webkit2/webkit2
 gopkg.in/yaml.v2

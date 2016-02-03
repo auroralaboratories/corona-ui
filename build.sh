@@ -17,7 +17,11 @@ if [ -s DEPENDENCIES ]; then
   echo 'Processing dependencies...'
   for f in $(find . -name DEPENDENCIES); do
     for d in $(cat ${f} | sort | uniq); do
-      go get $d
+      if [ "${d}" == "github.com/conformal/gotk3/gtk" ]; then
+        go get -v -tags gtk_3_10 $d
+      else
+        go get $d
+      fi
     done
   done
 fi
@@ -44,7 +48,7 @@ fi
 
 # build it!
 echo "Building..."
-go build -a $GOFLAGS -o bin/${PROJECT} ${REPO_PATH}/
+go build -tags gtk_3_10 -a $GOFLAGS -o bin/${PROJECT} ${REPO_PATH}/
 
 
 # vendor the dependencies

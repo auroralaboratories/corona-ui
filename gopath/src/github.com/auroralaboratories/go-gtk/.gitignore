@@ -1,7 +1,0 @@
-*~
-_obj
-*.cgo?.*
-_cgo_*
-main
-*.exe
-tags
