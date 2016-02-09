@@ -3,4 +3,4 @@
 *.log
 /gopath/pkg
 /gopath/bin
-/ui
+/config.yml

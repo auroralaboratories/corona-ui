@@ -30,14 +30,17 @@ type BindingConfig struct {
     ResourceParams map[string]string `json:"params,omitempty"`
     RouteMethods   []string          `json:"route_methods,omitempty"`
     ResourceMethod string            `json:"resource_method,omitempty"`
+    EscapeParams   bool              `json:"escape_params,omitempty"`
 }
 
 type Binding struct {
     Routes         []*regexp.Regexp
     RouteMethods   HttpMethod
+    RouteParams    map[string]interface{}
     ResourceMethod HttpMethod
     Resource       *url.URL
     ResourceParams map[string]interface{}
+    EscapeParams   bool
 }
 
 func (self *Binding) Evaluate(req *http.Request, params httprouter.Params) (interface{}, error) {
@@ -55,10 +58,6 @@ func (self *Binding) Evaluate(req *http.Request, params httprouter.Params) (inte
     }
 
     reqUrl := self.Resource.String()
-
-    if qs := self.Resource.RawQuery; qs != `` {
-        reqUrl = reqUrl + `?` + qs
-    }
 
     if bindingReq, err := http.NewRequest(method, reqUrl, nil); err == nil {
         client := &http.Client{}

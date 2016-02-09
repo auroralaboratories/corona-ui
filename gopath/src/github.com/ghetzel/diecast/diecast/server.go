@@ -21,20 +21,26 @@ import (
     log "github.com/Sirupsen/logrus"
 )
 
-const DEFAULT_CONFIG_PATH   = `diecast.yml`
-const DEFAULT_STATIC_PATH   = `public`
-const DEFAULT_SERVE_ADDRESS = `127.0.0.1`
-const DEFAULT_SERVE_PORT    = 28419
+const DEFAULT_CONFIG_PATH    = `diecast.yml`
+const DEFAULT_STATIC_PATH    = `static`
+const DEFAULT_SERVE_ADDRESS  = `127.0.0.1`
+const DEFAULT_SERVE_PORT     = 28419
+const DEFAULT_ROUTE_PREFIX   = `/`
+
+var ParamDelimPre            = `#{`
+var ParamDelimPost           = `}`
 
 type Server struct {
     Address      string
     Port         int
     Bindings     map[string]Binding
+    MountProxy   *MountProxy
     ConfigPath   string
     TemplatePath string
     Templates    map[string]engines.ITemplate
     StaticPath   string
     LogLevel     string
+    RoutePrefix  string
 
     router       *httprouter.Router
     server       *negroni.Negroni
@@ -47,8 +53,10 @@ func NewServer() *Server {
         ConfigPath:   DEFAULT_CONFIG_PATH,
         TemplatePath: engines.DEFAULT_TEMPLATE_PATH,
         Bindings:     make(map[string]Binding),
+        MountProxy:   new(MountProxy),
         Templates:    make(map[string]engines.ITemplate),
         StaticPath:   DEFAULT_STATIC_PATH,
+        RoutePrefix:  DEFAULT_ROUTE_PREFIX,
     }
 }
 
@@ -63,6 +71,9 @@ func (self *Server) Initialize() error {
                 return fmt.Errorf("Cannot populate bindings: %v", err)
             }
 
+            if err := self.InitializeMounts(config.Mounts); err != nil {
+                return fmt.Errorf("Failed to initialize mounts: %v", err)
+            }
         }else{
             return fmt.Errorf("Cannot load bindings.yml: %v", err)
         }
@@ -76,6 +87,10 @@ func (self *Server) Initialize() error {
 }
 
 func (self *Server) LoadTemplates() error {
+    if err := pongo.Initialize(); err != nil {
+        return nil
+    }
+
     return filepath.Walk(self.TemplatePath, func(filename string, info os.FileInfo, err error) error {
         log.Debugf("File in template path: %s (err: %v)", filename, err)
 
@@ -117,12 +132,14 @@ func (self *Server) LoadTemplates() error {
 func (self *Server) Serve() error {
     self.router = httprouter.New()
 
-    self.router.GET(`/*path`, func(w http.ResponseWriter, req *http.Request, params httprouter.Params){
+    self.RoutePrefix = strings.TrimSuffix(self.RoutePrefix, `/`)
+
+    self.router.GET(fmt.Sprintf("%s/*path", self.RoutePrefix), func(w http.ResponseWriter, req *http.Request, params httprouter.Params){
         routePath  := params.ByName(`path`)
         tplKey     := routePath
         var tpl engines.ITemplate
 
-        if tplKey == `/` {
+        if tplKey == `/` || tplKey == `` {
             tplKey = `/index`
         }
 
@@ -152,15 +169,22 @@ func (self *Server) Serve() error {
         if tpl != nil {
             routeBindings    := self.GetBindings(req.Method, routePath, req)
             allParams        := make(map[string]interface{})
-            payload          := map[string]interface{}{
-                `route`:  params.ByName(`path`),
-                `params`: allParams,
-            }
+            allRouteParams   := make(map[string]interface{})
 
             for _, binding := range routeBindings {
                 for k, v := range binding.ResourceParams {
                     allParams[k] = v
                 }
+
+                for k, v := range binding.RouteParams {
+                    allRouteParams[k] = v
+                }
+            }
+
+            payload          := map[string]interface{}{
+                `route`:        params.ByName(`path`),
+                `route_params`: allRouteParams,
+                `params`:       allParams,
             }
 
             bindingData := make(map[string]interface{})
@@ -176,7 +200,7 @@ func (self *Server) Serve() error {
 
             payload[`data`] = bindingData
 
-            log.Debugf("Data for %s\n---\n%+v\n---\n", routePath, payload)
+            // log.Debugf("Data for %s\n---\n%+v\n---\n", routePath, payload)
 
             if err := tpl.Render(w, payload); err != nil {
                 http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -187,9 +211,15 @@ func (self *Server) Serve() error {
         }
     })
 
+    staticHandler := negroni.NewStatic(self.MountProxy)
+
+    if self.RoutePrefix != DEFAULT_ROUTE_PREFIX {
+        staticHandler.Prefix = self.RoutePrefix
+    }
+
     self.server = negroni.New()
     self.server.Use(negroni.NewRecovery())
-    self.server.Use(negroni.NewStatic( http.Dir(self.StaticPath) ))
+    self.server.Use(staticHandler)
     self.server.UseHandler(self.router)
 
     self.server.Run(fmt.Sprintf("%s:%d", self.Address, self.Port))
@@ -207,29 +237,44 @@ func (self *Server) GetBindings(method string, routePath string, req *http.Reque
                 if match := rx.FindStringSubmatch(routePath); match != nil {
                     for i, matchGroupName := range rx.SubexpNames() {
                         if matchGroupName != `` {
-                            newUrl := *binding.Resource
-                            newUrl.Path = strings.Replace(newUrl.Path, `:`+matchGroupName, match[i], -1)
+                            newUrl       := *binding.Resource
 
+                        //  generate the final request path with params expanded from the 'resource' config
+                            newUrl.Path = strings.Replace(newUrl.Path, (ParamDelimPre + matchGroupName + ParamDelimPost), match[i], -1)
+
+                        //  expand parameters from the 'params' config
                             for qs, v := range newUrl.Query() {
-                                qsv := strings.Replace(v[0], `:`+matchGroupName, match[i], -1)
+                                qsv := strings.Replace(v[0], (ParamDelimPre + matchGroupName + ParamDelimPost), match[i], -1)
+
                                 binding.ResourceParams[qs] = qsv
+                                binding.RouteParams[matchGroupName] = match[i]
                             }
 
+                        //  passthrough querystring parameters supplied in the reuquest itself as overrides
                             for qs, v := range req.URL.Query() {
                                 if len(v) > 0 {
                                     binding.ResourceParams[qs] = v[0]
+                                    binding.RouteParams[qs] = v[0]
                                 }
                             }
 
-                            rawQuery := make([]string, 0)
+                        //  build raw querystring
+                            newUrlValues := newUrl.Query()
 
                             for k, v := range binding.ResourceParams {
                                 if str, err := stringutil.ToString(v); err == nil {
-                                    rawQuery = append(rawQuery, k + `=` + url.QueryEscape(str))
+                                    if binding.EscapeParams {
+                                        str = url.QueryEscape(str)
+                                    }
+
+                                    log.Debugf("Setting resource param %s='%s'", k, v)
+                                    newUrlValues.Set(k, str)
                                 }
                             }
 
-                            newUrl.RawQuery = strings.Join(rawQuery, `&`)
+                            newUrl.RawQuery = newUrlValues.Encode()
+
+                            log.Debugf("Resource URL: %+v (%s)", newUrl, newUrlValues.Encode())
 
                             binding.Resource = &newUrl
                         }
@@ -252,6 +297,8 @@ func (self *Server) PopulateBindings(bindings map[string]BindingConfig) error {
     for name, bindingConfig := range bindings {
         binding := Binding{
             ResourceParams: make(map[string]interface{}),
+            RouteParams:    make(map[string]interface{}),
+            EscapeParams:   bindingConfig.EscapeParams,
         }
 
         if len(bindingConfig.RouteMethods) == 0 {
@@ -296,6 +343,26 @@ func (self *Server) PopulateBindings(bindings map[string]BindingConfig) error {
         log.Infof("Setting up binding %s: %+v", name, binding)
         self.Bindings[name] = binding
     }
+
+    return nil
+}
+
+
+func (self *Server) InitializeMounts(mountsConfig []Mount) error {
+    mounts := make([]Mount, 0)
+
+    for _, mount := range mountsConfig {
+        log.Debugf("Initializing mount at %s", mount.Path)
+
+        if err := mount.Initialize(); err != nil {
+            return err
+        }
+
+        mounts = append(mounts, mount)
+    }
+
+    self.MountProxy.Mounts   = mounts
+    self.MountProxy.Fallback = http.Dir(self.StaticPath)
 
     return nil
 }
