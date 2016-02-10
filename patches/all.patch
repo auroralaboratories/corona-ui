@@ -1,0 +1,17 @@
+--- gopath/src/github.com/gotk3/gotk3/gtk/widget.go	2016-02-01 15:57:41.716419640 -0500
++++ patches/github.com/gotk3/gotk3/gtk/widget.go	2016-02-10 07:54:15.198195842 -0500
+@@ -609,3 +609,14 @@
+ 	w := &gdk.Window{wrapObject(unsafe.Pointer(c))}
+ 	return w, nil
+ }
++
++// GetScreen is a wrapper around gtk_widget_get_screen().
++func (v *Widget) GetScreen() (*gdk.Screen, error) {
++	c := C.gtk_widget_get_screen(v.native())
++	if c == nil {
++		return nil, nilPtrErr
++	}
++
++	w := &gdk.Screen{wrapObject(unsafe.Pointer(c))}
++	return w, nil
++}

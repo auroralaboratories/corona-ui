@@ -26,6 +26,9 @@ if [ -s DEPENDENCIES ]; then
   done
 fi
 
+# apply patches
+patch -r'-' -N -p0 < patches/all.patch
+
 # build the go-bindata tool
 # echo '-> building go-bindata utility'
 # cd gopath/src/github.com/jteeuwen/go-bindata/go-bindata

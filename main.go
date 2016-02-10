@@ -199,9 +199,12 @@ func main(){
         // window.Connect(`screen-changed`,  UpdateScreen)
         // window.Connect(`expose-event`,    ExposeEvent)
 
+
     //  hook up the drawing routines if we're going to be transparent
         if gdkScreen, err := window.GetScreen(); err == nil && gdkScreen.IsComposited() {
             if config.Window.Transparent {
+                useAlpha = true
+
                 layout.Connect(`screen-changed`,  OnUpdateScreen)
                 layout.Connect(`draw`,            OnDraw)
 
@@ -353,13 +356,13 @@ func main(){
 
 
 func OnUpdateScreen(widgetObj *glib.Object) {
-    if screen, err := gdk.ScreenGetDefault(); err != nil {
-        if widgetObj != nil {
-            if visual, err := screen.GetRGBAVisual(); err == nil && config.Window.Transparent {
-                widget := gtk.Widget{
-                    glib.InitiallyUnowned{ widgetObj },
-                }
+    if widgetObj != nil {
+        widget := gtk.Widget{
+            glib.InitiallyUnowned{ widgetObj },
+        }
 
+        if screen, err := widget.GetScreen(); err == nil {
+            if visual, err := screen.GetRGBAVisual(); err == nil && config.Window.Transparent {
                 widget.SetVisual(visual)
                 widget.SetAppPaintable(true)
 
@@ -371,8 +374,6 @@ func OnUpdateScreen(widgetObj *glib.Object) {
                 return
             }
         }
-    }else{
-        log.Errorf("Cannot get default screen")
     }
 }
 
