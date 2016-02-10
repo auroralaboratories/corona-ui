@@ -1,4 +1,6 @@
 github.com/auroralaboratories/go-webkit2/webkit2
+github.com/BurntSushi/freetype-go/freetype
+github.com/BurntSushi/graphics-go/graphics
 github.com/BurntSushi/xgb
 github.com/BurntSushi/xgbutil
 github.com/codegangsta/cli
