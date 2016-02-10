@@ -27,7 +27,7 @@ if [ -s DEPENDENCIES ]; then
 fi
 
 # apply patches
-patch -r'-' -N -p0 < patches/all.patch
+rsync -rv ./patches/ ./gopath/src/
 
 # build the go-bindata tool
 # echo '-> building go-bindata utility'
