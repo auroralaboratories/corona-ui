@@ -22,6 +22,19 @@ import (
 	"github.com/sqs/gojs"
 )
 
+type SnapshotOptions int
+const (
+	SnapshotOptionNone                         SnapshotOptions = C.WEBKIT_SNAPSHOT_OPTIONS_NONE
+	SnapshotOptionIncludeSelectionHighlighting                 = C.WEBKIT_SNAPSHOT_OPTIONS_INCLUDE_SELECTION_HIGHLIGHTING
+	SnapshotOptionTransparentBackground                        = C.WEBKIT_SNAPSHOT_OPTIONS_TRANSPARENT_BACKGROUND
+)
+
+type SnapshotRegion int
+const (
+	RegionVisible                              SnapshotRegion  = C.WEBKIT_SNAPSHOT_REGION_VISIBLE
+	RegionFullDocument                                         = C.WEBKIT_SNAPSHOT_REGION_FULL_DOCUMENT
+)
+
 // WebView represents a WebKit WebView.
 //
 // See also: WebView at
@@ -196,7 +209,7 @@ const cairoImageSurfaceFormatARGB32 = 0
 //
 // See also: webkit_web_view_get_snapshot at
 // http://webkitgtk.org/reference/webkit2gtk/stable/WebKitWebView.html#webkit-web-view-get-snapshot
-func (v *WebView) GetSnapshot(resultCallback func(result *image.RGBA, err error)) {
+func (v *WebView) GetSnapshotWithOptions(region SnapshotRegion, options SnapshotOptions, resultCallback func(result *image.RGBA, err error)) {
 	var cCallback C.GAsyncReadyCallback
 	var userData C.gpointer
 	var err error
@@ -255,9 +268,14 @@ func (v *WebView) GetSnapshot(resultCallback func(result *image.RGBA, err error)
 	}
 
 	C.webkit_web_view_get_snapshot(v.webView,
-		(C.WebKitSnapshotRegion)(1), // FullDocument is the only working region at this point
-		(C.WebKitSnapshotOptions)(0),
+		(C.WebKitSnapshotRegion)(region), // FullDocument is the only working region at this point
+		(C.WebKitSnapshotOptions)(options),
 		nil,
 		cCallback,
 		userData)
+}
+
+
+func (v *WebView) GetSnapshot(resultCallback func(result *image.RGBA, err error)) {
+	v.GetSnapshotWithOptions(RegionFullDocument, SnapshotOptionNone, resultCallback)
 }
