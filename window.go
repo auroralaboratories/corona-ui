@@ -2,18 +2,8 @@ package main
 
 import (
     "fmt"
-    "image"
-    "math"
-    "time"
-    // "io/ioutil"
-    "io"
-    "os"
 
     "github.com/auroralaboratories/go-webkit2/webkit2"
-    "github.com/BurntSushi/xgb/xproto"
-    "github.com/BurntSushi/xgb/shape"
-    "github.com/BurntSushi/xgbutil"
-    "github.com/BurntSushi/xgbutil/xgraphics"
     "github.com/gotk3/gotk3/cairo"
     "github.com/gotk3/gotk3/gdk"
     "github.com/gotk3/gotk3/glib"
@@ -49,14 +39,12 @@ type Window struct {
     URI                 string
     Server              *Server
 
-    xconn     *xgbutil.XUtil
-    gtkWindow *gtk.Window
-    layout    *gtk.Layout
-    webview   *webkit2.WebView
-    webset    *webkit2.Settings
+    gtkWindow           *gtk.Window
+    layout              *gtk.Layout
+    webview             *webkit2.WebView
+    webset              *webkit2.Settings
 
-    shapeOk   bool
-    winShape  xproto.Pixmap
+    shapeOk             bool
 }
 
 func NewWindow(server *Server) *Window {
@@ -67,20 +55,6 @@ func NewWindow(server *Server) *Window {
 
 func (self *Window) Initialize(config *WindowConfig) error {
     self.Config = config
-
-    if xconn, err := xgbutil.NewConn(); err == nil {
-        self.xconn = xconn
-
-        if err := shape.Init(self.xconn.Conn()); err == nil {
-            self.shapeOk = true
-        }else{
-            self.shapeOk = false
-            self.Config.Shaped = false
-            log.Warnf("Failed to initialize X11 SHAPE module, cannot change window shape: %v", err)
-        }
-    }else{
-        return fmt.Errorf("Failed to connect to X11: %v", err)
-    }
 
     gtk.Init(nil)
 
@@ -137,12 +111,7 @@ func (self *Window) Initialize(config *WindowConfig) error {
 
         switch event {
         case webkit2.LoadFinished:
-            go func(){
-                for {
-                    self.updateWindowShapePixmapFromWebview()
-                    time.Sleep(3 * time.Second)
-                }
-            }()
+            self.updateWindowShapePixmapFromWebview()
         }
     })
 
@@ -299,181 +268,15 @@ func (self *Window) onDraw(_ interface{}, context *cairo.Context) {
 
 
 func (self *Window) updateWindowShapePixmapFromWebview() error {
-    self.webview.GetSnapshotWithOptions(webkit2.RegionFullDocument, webkit2.SnapshotOptionTransparentBackground, func(result *image.RGBA, err error){
+    self.webview.GetSnapshotSurfaceWithOptions(webkit2.RegionFullDocument, webkit2.SnapshotOptionTransparentBackground, func(surface *cairo.Surface, err error){
         if err == nil {
-        //  so...
-        //  xgbutil doesn't support creating 1-bit depth pixmaps (bitmaps)
-        //  This means we need to do this manually...                        :(
-            if pixmapId, err := xproto.NewPixmapId(self.xconn.Conn()); err == nil {
-                width    := result.Bounds().Dx()
-                height   := result.Bounds().Dy()
-                drawable := xproto.Drawable(self.xconn.RootWin())
-
-            //  synchronously create the pixmap with the appropriate dimensions and color depth
-                if err := xproto.CreatePixmapChecked(self.xconn.Conn(),
-                    1,                                                  // color depth (bits)
-                    pixmapId,                                           // allocated pixmap ID
-                    drawable,                                           // pixmap drawable
-                    uint16(width),
-                    uint16(height)).Check(); err == nil {
-                    bitmap     := make([]byte, (width*height)/8)
-                    bitmapBits := 0
-                    bitmapI    := 0
-                    ko_Limit   := self.Config.KnockoutLimit
-
-                    c_off      := 0
-                    c_on       := 0
-
-                //  image's Pix[] is a slice of R,G,B,A values; we're only looking for alpha
-                //  so start at Pix[3] and step forward by 4 elements each time
-                //  populate the bitmap to represent either part-of or not-part-of the window area
-                    for i := 3; i < len(result.Pix); i=i+4 {
-                        currentBit := byte(math.Mod(float64(bitmapBits), 8.0))
-
-                    //  if the current result alpha value is gt the knockout threshold, flag the
-                    //  corresponding bitmap bit ON
-                        if result.Pix[i] <= ko_Limit {
-                            c_off += 1
-                        }else{
-                            bitmap[bitmapI] |= (byte(1)<<currentBit)
-                            c_on += 1
-                        }
-
-                        bitmapBits += 1
-
-                    //  increment the current bitmap index every 8 bits processed
-                        if currentBit == 7 {
-                            bitmapI += 1
-                        }
-                    }
-
-                    if file, err := os.OpenFile(`./bitmap.xbm`, os.O_WRONLY, 0755); err == nil {
-                        io.WriteString(file, fmt.Sprintf("#define max_width %d\n", width))
-                        io.WriteString(file, fmt.Sprintf("#define max_height %d\n", height))
-                        io.WriteString(file, "static unsigned char max_bits[] = {\n")
-
-                        for i := 0; i < len(bitmap); i++ {
-                            io.WriteString(file, fmt.Sprintf("0x%x", bitmap[i]))
-
-                            if (i+1) < len(bitmap) {
-                                io.WriteString(file, ", ")
-                            }else{
-                                io.WriteString(file, "};\n")
-                            }
-                        }
-
-                        file.Close()
-                    }else{
-                        log.Warnf("Unable to create XBM: %v", err)
-                    }
-
-
-                    log.Debugf("Resulting bitmap: %d bytes (%d bits); %d opaque, %d transparent", len(bitmap), len(bitmap)*8, c_on, c_off)
-
-                //  resulting bitmap should be exactly 1/32 the size of the incoming image
-                //  (32-bit RGBA is 32x the size of a 1-bit bitmap)
-                //
-                    if len(bitmap) == (len(result.Pix)/32) {
-                    //  this is a reimplementation of xgraphics.XDraw() because I'm not ready to fork
-                    //  xgbutil yet
-                    //
-                        var chunk []byte
-
-                        rowsPerPut   := ((xgbutil.MaxReqSize - 28) / width)
-                        bytesPerPut  := (rowsPerPut * width)
-                        xpos         := result.Rect.Min.X
-                        ypos         := result.Rect.Min.Y
-                        heightPerPut := 0
-                        start        := 0
-                        end          := 0
-
-                        for len(bitmap) > end {
-                        //  end is offset by current position + chunk size
-                            end = start + bytesPerPut
-
-                        //  make sure end doesn't extend beyond data
-                            if len(bitmap) < end {
-                                end = len(bitmap)
-                            }
-
-                            chunk        = bitmap[start:end]
-                            heightPerPut = (len(chunk) / width)
-
-                        //  put bitmap data into the destination drawable
-                        //  this is the nutmeat of an unchecked XDraw request
-                            xproto.PutImage(self.xconn.Conn(),
-                                xproto.ImageFormatXYBitmap,                 // format
-                                xproto.Drawable(pixmapId),                  // drawable surface
-                                self.xconn.GC(),                            // graphics context
-                                uint16(width),                              // width
-                                uint16(heightPerPut),                       // height of this chunk
-                                int16(xpos),                                // origin X of this chunk
-                                int16(ypos),                                // origin Y of this chunk
-                                0,                                          // XGB: LeftPad
-                                1,                                          // color depth (bits)
-                                chunk)
-
-                        //  new start is this end
-                            start = end
-
-                        //  next row (y-position) increments by however many rows we just put
-                            ypos += rowsPerPut
-                        }
-
-
-                        if ximage, err := xgraphics.NewDrawable(self.xconn, xproto.Drawable(pixmapId)); err == nil {
-                            log.Debugf("DUMP shape to ./test.png")
-                            ximage.SavePng(`./test.png`)
-                        }else{
-                            log.Warnf("Failed to dump image: %v", err)
-                        }
-
-                        if err := self.applyWindowShape(pixmapId); err != nil {
-                            log.Errorf("Failed to apply window shape: %v", err)
-                        }
-                    }else{
-                        log.Errorf("Failed to create X11 pixmap: resulting bitmap is the wrong size (expected %d, got %d)", (len(result.Pix)/4), len(bitmap))
-                    }
-                }else{
-                    log.Errorf("Failed to create X11 pixmap: %v", err)
-                }
-            }else{
-                log.Errorf("Failed to allocate X11 pixmap ID: %v", err)
-            }
-        }
-    })
-
-    return nil
-}
-
-func (self *Window) applyWindowShape(pixmap xproto.Pixmap) error {
-    if self.shapeOk {
-        if pixmap > 0 {
-            defer xgraphics.FreePixmap(self.xconn, pixmap)
-
-            if gdkWindow, err := self.gtkWindow.GetWindow(); err == nil {
-                if xid, err := gdkWindow.GetWindowID(); err == nil {
-                //  shape.Op(0)   -> ShapeSet
-                //  shape.Kind(0) -> ShapeBounding
-                //
-                    log.Debugf("Shape pixmap: %v", pixmap)
-
-                    if err := shape.MaskChecked(self.xconn.Conn(), shape.Op(0), shape.Kind(0), xproto.Window(xid), 0, 0, pixmap).Check(); err != nil {
-                        return err
-                    }
-
-                }else{
-                    return err
-                }
-            }else{
-                return err
+            if err := self.gtkWindow.SetShape(surface); err != nil {
+                log.Errorf("Failed to reshape window: %v", err)
             }
         }else{
-            return fmt.Errorf("Window shape pixmap is unset")
+            log.Errorf("Failed to reshape window: %v", err)
         }
-    }else{
-        return fmt.Errorf("Cannot apply shape; SHAPE extension not initialized")
-    }
+    })
 
     return nil
 }

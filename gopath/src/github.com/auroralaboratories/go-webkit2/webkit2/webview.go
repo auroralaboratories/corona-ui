@@ -13,9 +13,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"image"
 	"unsafe"
 
+	"github.com/gotk3/gotk3/cairo"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/gotk3/gotk3/gdk"
@@ -275,7 +277,45 @@ func (v *WebView) GetSnapshotWithOptions(region SnapshotRegion, options Snapshot
 		userData)
 }
 
-
 func (v *WebView) GetSnapshot(resultCallback func(result *image.RGBA, err error)) {
 	v.GetSnapshotWithOptions(RegionFullDocument, SnapshotOptionNone, resultCallback)
+}
+
+
+func (v *WebView) GetSnapshotSurfaceWithOptions(region SnapshotRegion, options SnapshotOptions, resultCallback func(result *cairo.Surface, err error)) {
+	var cCallback C.GAsyncReadyCallback
+	var userData C.gpointer
+	var err error
+	if resultCallback != nil {
+		callback := func(result *C.GAsyncResult) {
+			var snapErr *C.GError
+			snapResult := C.webkit_web_view_get_snapshot_finish(v.webView, result, &snapErr)
+			if snapResult == nil {
+				defer C.g_error_free(snapErr)
+				msg := C.GoString((*C.char)(snapErr.message))
+				resultCallback(nil, errors.New(msg))
+				return
+			}
+
+			surface := cairo.NewSurface(uintptr(unsafe.Pointer(snapResult)), false)
+
+			if status := surface.Status(); status == cairo.STATUS_SUCCESS {
+				resultCallback(surface, nil)
+			}else{
+				resultCallback(nil, fmt.Errorf("Cairo surface error %d", status))
+			}
+		}
+
+		cCallback, userData, err = newGAsyncReadyCallback(callback)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	C.webkit_web_view_get_snapshot(v.webView,
+		(C.WebKitSnapshotRegion)(region), // FullDocument is the only working region at this point
+		(C.WebKitSnapshotOptions)(options),
+		nil,
+		cCallback,
+		userData)
 }

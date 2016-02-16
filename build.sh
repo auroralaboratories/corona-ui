@@ -17,7 +17,7 @@ if [ -s DEPENDENCIES ]; then
   echo 'Processing dependencies...'
   for f in $(find . -name DEPENDENCIES); do
     for d in $(cat ${f} | sort | uniq); do
-      if [ "${d}" == "github.com/conformal/gotk3/gtk" ]; then
+      if [ "${d}" == "github.com/gotk3/gotk3/gtk" -o "${d}" == "github.com/auroralaboratories/go-webkit2/webkit2" ]; then
         go get -v -tags gtk_3_10 $d
       else
         go get $d
@@ -28,23 +28,6 @@ fi
 
 # apply patches
 rsync -rv ./patches/ ./gopath/src/
-
-# build the go-bindata tool
-# echo '-> building go-bindata utility'
-# cd gopath/src/github.com/jteeuwen/go-bindata/go-bindata
-# go build
-# cd - > /dev/null
-
-# echo '-> building go-bindata-assetfs utility'
-# cd gopath/src/github.com/elazarl/go-bindata-assetfs/go-bindata-assetfs
-# go build
-# cd - > /dev/null
-
-# export PATH="$PWD/gopath/src/github.com/jteeuwen/go-bindata/go-bindata:$PWD/gopath/src/github.com/elazarl/go-bindata-assetfs/go-bindata-assetfs:$PATH"
-# echo 'Embedding static assets from ./public/'
-# go-bindata-assetfs --pkg util $(find public -type d | tr "\n" " ")
-# sed -i 's/func assetFS()/func AssetFS()/' bindata_assetfs.go
-# mv bindata_assetfs.go util/
 
 # set flags
 [ "$DEBUG" == 'true' ] || GOFLAGS="-ldflags '-s'"
