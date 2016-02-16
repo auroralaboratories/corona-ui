@@ -4,6 +4,9 @@ import (
     "fmt"
 
     "github.com/auroralaboratories/go-webkit2/webkit2"
+    "github.com/BurntSushi/xgb/xproto"
+    "github.com/BurntSushi/xgbutil"
+    "github.com/BurntSushi/xgbutil/ewmh"
     "github.com/gotk3/gotk3/cairo"
     "github.com/gotk3/gotk3/gdk"
     "github.com/gotk3/gotk3/glib"
@@ -12,26 +15,35 @@ import (
 )
 
 type Color struct {
-    Red   float64     `yaml:"red"`
-    Green float64     `yaml:"green"`
-    Blue  float64     `yaml:"blue"`
-    Alpha float64     `yaml:"alpha"`
+    Red   float64              `yaml:"red"`
+    Green float64              `yaml:"green"`
+    Blue  float64              `yaml:"blue"`
+    Alpha float64              `yaml:"alpha"`
+}
+
+type Reservation struct {
+    Left   uint                `yaml:"left"`
+    Right  uint                `yaml:"right"`
+    Top    uint                `yaml:"top"`
+    Bottom uint                `yaml:"bottom"`
 }
 
 type WindowConfig struct {
-    Width          int     `yaml:"width"`
-    Height         int     `yaml:"height"`
-    X              int     `yaml:"x"`
-    Y              int     `yaml:"y"`
-    Background     Color   `yaml:"background"`
-    Frame          bool    `yaml:"frame"`
-    Position       string  `yaml:"position"`
-    Resizable      bool    `yaml:"resizable"`
-    Stacking       string  `yaml:"stacking"`
-    Transparent    bool    `yaml:"transparent"`
-    Shaped         bool    `yaml:"shaped"`
-    KnockoutLimit  uint8   `yaml:"knockout_limit"`
-    Type           string  `yaml:"type"`
+    Width          int         `yaml:"width"`
+    Height         int         `yaml:"height"`
+    X              int         `yaml:"x"`
+    Y              int         `yaml:"y"`
+    Background     Color       `yaml:"background"`
+    Frame          bool        `yaml:"frame"`
+    Position       string      `yaml:"position"`
+    Resizable      bool        `yaml:"resizable"`
+    Stacking       string      `yaml:"stacking"`
+    Transparent    bool        `yaml:"transparent"`
+    Shaped         bool        `yaml:"shaped"`
+    Reserve        bool        `yaml:"reserve"`
+    ReserveBounds  Reservation `yaml:"reserve_bounds"`
+    KnockoutLimit  uint8       `yaml:"knockout_limit"`
+    Type           string      `yaml:"type"`
 }
 
 type Window struct {
@@ -39,12 +51,11 @@ type Window struct {
     URI                 string
     Server              *Server
 
+    xconn               *xgbutil.XUtil
     gtkWindow           *gtk.Window
     layout              *gtk.Layout
     webview             *webkit2.WebView
     webset              *webkit2.Settings
-
-    shapeOk             bool
 }
 
 func NewWindow(server *Server) *Window {
@@ -55,6 +66,12 @@ func NewWindow(server *Server) *Window {
 
 func (self *Window) Initialize(config *WindowConfig) error {
     self.Config = config
+
+    if xconn, err := xgbutil.NewConn(); err == nil {
+        self.xconn = xconn
+    }else{
+        return fmt.Errorf("Failed to connect to X11: %v", err)
+    }
 
     gtk.Init(nil)
 
@@ -104,6 +121,70 @@ func (self *Window) Initialize(config *WindowConfig) error {
             self.gtkWindow.SetPosition(position)
         }
 
+
+    //  set window struts (reserve)
+        if self.Config.Reserve {
+            if gdkWindow, err := self.gtkWindow.GetWindow(); err == nil {
+                if gdkScreen, err := self.gtkWindow.GetScreen(); err == nil {
+                    if xid, err := gdkWindow.GetWindowID(); err == nil {
+                        strutPartial := ewmh.WmStrutPartial{}
+                        strutSimple  := ewmh.WmStrut{}
+
+                        // winX, winY := gtkWindow.GetPosition()
+                        // winW, winH := gtkWindow.GetSize()
+                        scrW       := gdkScreen.GetWidth()
+                        scrH       := gdkScreen.GetHeight()
+
+                        strutPartial.Left   = self.Config.ReserveBounds.Left
+                        strutPartial.Right  = self.Config.ReserveBounds.Right
+                        strutPartial.Top    = self.Config.ReserveBounds.Top
+                        strutPartial.Bottom = self.Config.ReserveBounds.Bottom
+
+                        strutSimple.Left    = strutPartial.Left
+                        strutSimple.Right   = strutPartial.Right
+                        strutSimple.Top     = strutPartial.Top
+                        strutSimple.Bottom  = strutPartial.Bottom
+
+                        if strutPartial.Left > 0 {
+                            strutPartial.LeftStartY = 0
+                            strutPartial.LeftEndY   = uint(scrH)
+                        }
+
+                        if strutPartial.Right > 0 {
+                            strutPartial.RightStartY = 0
+                            strutPartial.RightEndY   = uint(scrH)
+                        }
+
+                        if strutPartial.Top > 0 {
+                            strutPartial.TopStartX = 0
+                            strutPartial.TopEndX   = uint(scrW)
+                        }
+
+                        if strutPartial.Bottom > 0 {
+                            strutPartial.BottomStartX = 0
+                            strutPartial.BottomEndX   = uint(scrW)
+                        }
+
+                        log.Debugf("Setting window struts: %+v / %+v", strutPartial, strutSimple)
+
+                        if err := ewmh.WmStrutPartialSet(self.xconn, xproto.Window(xid), &strutPartial); err != nil {
+                            log.Errorf("Failed to set window space reservations (partials): %v", err)
+                        }
+
+                        if err := ewmh.WmStrutSet(self.xconn, xproto.Window(xid), &strutSimple); err != nil {
+                            log.Errorf("Failed to set window space reservations: %v", err)
+                        }
+
+                    }else{
+                        log.Errorf("Failed to retrieve X11 window ID: %v", err)
+                    }
+                }else{
+                    log.Errorf("Failed to retrieve GDK screen: %v", err)
+                }
+            }else{
+                log.Errorf("Failed to retrieve GDK window: %v", err)
+            }
+        }
     })
 
     self.webview.Connect(`load-changed`, func(_ *glib.Object, event webkit2.LoadEvent){
