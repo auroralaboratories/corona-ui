@@ -1,0 +1,61 @@
+hash: 39a554655446566f8ca39cb3d356851b21513da3dfbe7d9faec2bca47c864537
+updated: 2016-04-01T16:07:40.759824336-04:00
+imports:
+- name: github.com/auroralaboratories/go-webkit2
+  version: 86ac30568e4a0041305d2ec80cfc488e3f4dad90
+  subpackages:
+  - webkit2
+- name: github.com/BurntSushi/xgb
+  version: b3a96fa0bc5f20dd08ed8342359a31b64bd761fa
+  subpackages:
+  - xproto
+  - xinerama
+  - shape
+- name: github.com/BurntSushi/xgbutil
+  version: 352063876c10d45feb1b6ea213dc0fb619a52740
+  subpackages:
+  - ewmh
+  - xevent
+  - xprop
+- name: github.com/cloudfoundry-incubator/candiedyaml
+  version: 479485e9bfc69ee37d074b36ce36da5e4fba7941
+- name: github.com/codegangsta/cli
+  version: bc465becccd1d527002fda095fc3c19d9c115029
+- name: github.com/codegangsta/negroni
+  version: c7477ad8e330bef55bf1ebe300cf8aa67c492d1b
+- name: github.com/flosch/pongo2
+  version: 7f5515449ea9bbeb00256d9cbb654c556e7d0146
+- name: github.com/ghetzel/diecast
+  version: aa2849efd35bf04a92202d28716984a558f67f40
+  subpackages:
+  - diecast
+  - diecast/engines
+  - diecast/engines/pongo
+  - diecast/util
+- name: github.com/ghodss/yaml
+  version: 1a6f069841556a7bcaff4a397ca6e8328d266c2f
+- name: github.com/gotk3/gotk3
+  version: 3b2b17537e33586945060efacdea54693122644d
+  subpackages:
+  - cairo
+  - gdk
+  - glib
+  - gtk
+  - pango
+- name: github.com/julienschmidt/httprouter
+  version: 77366a47451a56bb3ba682481eed85b64fea14e8
+- name: github.com/shutterstock/go-stockutil
+  version: 45fbaaaf36a08d5f6764c57cf3a2143e5d894bca
+  subpackages:
+  - stringutil
+- name: github.com/Sirupsen/logrus
+  version: 4b6ea7319e214d98c938f12692336f7ca9348d6b
+- name: github.com/sqs/gojs
+  version: 80bdfa8b7d0a0c118220bece71083f2527e7bbc4
+- name: golang.org/x/sys
+  version: 320cb01ddbbf0473674c2585f9b6e245721de355
+  subpackages:
+  - unix
+- name: gopkg.in/yaml.v2
+  version: a83829b6f1293c91addabc89d0571c246397bbf4
+devImports: []
