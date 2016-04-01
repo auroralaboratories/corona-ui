@@ -1,8 +1,8 @@
 hash: 39a554655446566f8ca39cb3d356851b21513da3dfbe7d9faec2bca47c864537
-updated: 2016-04-01T16:29:42.772548184-04:00
+updated: 2016-04-01T19:34:19.965886317-04:00
 imports:
 - name: github.com/auroralaboratories/go-webkit2
-  version: 86ac30568e4a0041305d2ec80cfc488e3f4dad90
+  version: bf31299fbd9bbfc68ad41b6f307271b67a1a0a69
   subpackages:
   - webkit2
 - name: github.com/BurntSushi/xgb
