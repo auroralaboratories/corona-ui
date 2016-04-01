@@ -29,6 +29,6 @@ func (v *Window) MoveToDesktop(d uint32) {
 // GetWindowID is a wrapper around gdk_x11_window_get_xid().
 // It only works on GDK versions compiled with X11 support.  It will return an error if X11 support is unavailable
 func (v *Window) GetWindowID() (uint32, error) {
-    xid := C.gdk_x11_window_get_xid(v.native())
-    return uint32(xid), nil
+	xid := C.gdk_x11_window_get_xid(v.native())
+	return uint32(xid), nil
 }

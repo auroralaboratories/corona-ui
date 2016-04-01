@@ -587,26 +587,25 @@ func (v *Window) SetApplication(a *Application) {
 	C.gtk_window_set_application(v.native(), a.native())
 }
 
-
 func (v *Window) SetShape(surface *cairo.Surface) error {
 	if gdkScreen, err := v.GetScreen(); err == nil {
 		if gdkDisplay, err := gdkScreen.GetDisplay(); err == nil {
 			if !gdkDisplay.SupportsShapes() {
 				return fmt.Errorf("Underlying display does not support arbitrary window shapes")
 			}
-		}else{
+		} else {
 			return err
 		}
-	}else{
+	} else {
 		return err
 	}
 
 	if surface == nil {
 		C.gtk_widget_shape_combine_region(v.toWidget(), nil)
-	}else{
+	} else {
 		var region *C.cairo_region_t
 
-		region = C.gdk_cairo_region_create_from_surface( (*C.cairo_surface_t)(unsafe.Pointer(surface.Native())) )
+		region = C.gdk_cairo_region_create_from_surface((*C.cairo_surface_t)(unsafe.Pointer(surface.Native())))
 
 		if region != nil {
 			C.gtk_widget_shape_combine_region(v.toWidget(), region)
