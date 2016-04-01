@@ -8,4 +8,5 @@ fmt:
 	gofmt -w .
 
 build:
-	go build -tags gtk_3_10 -o bin/`basename ${PWD}`
+	rsync -rv ./patches/ ./vendor/
+	go build -o bin/`basename ${PWD}`
