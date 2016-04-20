@@ -13,4 +13,4 @@ fmt:
 build:
 	pkg-config --libs 'webkit2gtk-4.0 >= 2.8'
 	rsync -rv ./patches/ ./vendor/
-	go build -o bin/`basename ${PWD}`
+	CC=gcc-4.9 go build -o bin/`basename ${PWD}`

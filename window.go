@@ -191,7 +191,9 @@ func (self *Window) Initialize(config *WindowConfig) error {
 
 		switch event {
 		case webkit2.LoadFinished:
-			self.updateWindowShapePixmapFromWebview()
+			if self.Config.Shaped {
+				self.updateWindowShapePixmapFromWebview()
+			}
 		}
 	})
 
