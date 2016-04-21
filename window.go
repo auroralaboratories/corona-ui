@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/BurntSushi/xgbutil"
 	"github.com/BurntSushi/xgbutil/ewmh"
@@ -12,6 +11,8 @@ import (
 	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
+	"strconv"
+	"strings"
 )
 
 type Color struct {
@@ -22,17 +23,17 @@ type Color struct {
 }
 
 type Reservation struct {
-	Left   uint `yaml:"left"`
-	Right  uint `yaml:"right"`
-	Top    uint `yaml:"top"`
-	Bottom uint `yaml:"bottom"`
+	Left   string `yaml:"left"`
+	Right  string `yaml:"right"`
+	Top    string `yaml:"top"`
+	Bottom string `yaml:"bottom"`
 }
 
 type WindowConfig struct {
-	Width         int         `yaml:"width"`
-	Height        int         `yaml:"height"`
-	X             int         `yaml:"x"`
-	Y             int         `yaml:"y"`
+	Width         string      `yaml:"width"`
+	Height        string      `yaml:"height"`
+	X             string      `yaml:"x"`
+	Y             string      `yaml:"y"`
 	Background    Color       `yaml:"background"`
 	Frame         bool        `yaml:"frame"`
 	Position      string      `yaml:"position"`
@@ -41,15 +42,22 @@ type WindowConfig struct {
 	Transparent   bool        `yaml:"transparent"`
 	Shaped        bool        `yaml:"shaped"`
 	Reserve       bool        `yaml:"reserve"`
-	ReserveBounds Reservation `yaml:"reserve_bounds"`
+	ReserveBounds Reservation `yaml:"bounds"`
 	KnockoutLimit uint8       `yaml:"knockout_limit"`
 	Type          string      `yaml:"type"`
 }
 
 type Window struct {
-	Config *WindowConfig
-	URI    string
-	Server *Server
+	Config      *WindowConfig
+	URI         string
+	Server      *Server
+	Realized    bool
+	Width       int
+	Height      int
+	X           int
+	Y           int
+	ScreenWidth int
+	ScreeHeight int
 
 	xconn     *xgbutil.XUtil
 	gtkWindow *gtk.Window
@@ -95,10 +103,20 @@ func (self *Window) Initialize(config *WindowConfig) error {
 	})
 
 	self.gtkWindow.Connect(`realize`, func() {
-		//  move window
+		if gdkScreen, err := self.gtkWindow.GetScreen(); err == nil {
+			self.X, self.Y = self.gtkWindow.GetPosition()
+			self.Width, self.Height = self.gtkWindow.GetSize()
+
+			self.ScreenWidth = gdkScreen.GetWidth()
+			self.ScreeHeight = gdkScreen.GetHeight()
+
+			self.Realized = true
+		}
+
+		//  move/resize window
 		if pos := self.Config.Position; pos == `` {
-			if x := self.Config.X; x >= 0 {
-				if y := self.Config.Y; y >= 0 {
+			if x, err := self.DimensionToInt(self.Config.X, self.ScreenWidth); err == nil && x >= 0 {
+				if y, err := self.DimensionToInt(self.Config.Y, self.ScreeHeight); err == nil && y >= 0 {
 					self.gtkWindow.Move(x, y)
 				}
 			}
@@ -121,64 +139,81 @@ func (self *Window) Initialize(config *WindowConfig) error {
 			self.gtkWindow.SetPosition(position)
 		}
 
+		//  size window
+		if w, err := self.DimensionToInt(self.Config.Width, self.ScreenWidth); err == nil && w > 0 {
+			if h, err := self.DimensionToInt(self.Config.Height, self.ScreeHeight); err == nil && h > 0 {
+				self.gtkWindow.SetSizeRequest(w, h)
+			}
+		}
+
 		//  set window struts (reserve)
 		if self.Config.Reserve {
 			if gdkWindow, err := self.gtkWindow.GetWindow(); err == nil {
-				if gdkScreen, err := self.gtkWindow.GetScreen(); err == nil {
-					if xid, err := gdkWindow.GetWindowID(); err == nil {
-						strutPartial := ewmh.WmStrutPartial{}
-						strutSimple := ewmh.WmStrut{}
+				if xid, err := gdkWindow.GetWindowID(); err == nil {
+					strutPartial := ewmh.WmStrutPartial{}
+					strutSimple := ewmh.WmStrut{}
 
-						// winX, winY := gtkWindow.GetPosition()
-						// winW, winH := gtkWindow.GetSize()
-						scrW := gdkScreen.GetWidth()
-						scrH := gdkScreen.GetHeight()
-
-						strutPartial.Left = self.Config.ReserveBounds.Left
-						strutPartial.Right = self.Config.ReserveBounds.Right
-						strutPartial.Top = self.Config.ReserveBounds.Top
-						strutPartial.Bottom = self.Config.ReserveBounds.Bottom
-
-						strutSimple.Left = strutPartial.Left
-						strutSimple.Right = strutPartial.Right
-						strutSimple.Top = strutPartial.Top
-						strutSimple.Bottom = strutPartial.Bottom
-
-						if strutPartial.Left > 0 {
-							strutPartial.LeftStartY = 0
-							strutPartial.LeftEndY = uint(scrH)
-						}
-
-						if strutPartial.Right > 0 {
-							strutPartial.RightStartY = 0
-							strutPartial.RightEndY = uint(scrH)
-						}
-
-						if strutPartial.Top > 0 {
-							strutPartial.TopStartX = 0
-							strutPartial.TopEndX = uint(scrW)
-						}
-
-						if strutPartial.Bottom > 0 {
-							strutPartial.BottomStartX = 0
-							strutPartial.BottomEndX = uint(scrW)
-						}
-
-						log.Debugf("Setting window struts: %+v / %+v", strutPartial, strutSimple)
-
-						if err := ewmh.WmStrutPartialSet(self.xconn, xproto.Window(xid), &strutPartial); err != nil {
-							log.Errorf("Failed to set window space reservations (partials): %v", err)
-						}
-
-						if err := ewmh.WmStrutSet(self.xconn, xproto.Window(xid), &strutSimple); err != nil {
-							log.Errorf("Failed to set window space reservations: %v", err)
-						}
-
+					if v, err := self.DimensionToInt(self.Config.ReserveBounds.Left, self.ScreenWidth); err == nil {
+						strutPartial.Left = uint(v)
 					} else {
-						log.Errorf("Failed to retrieve X11 window ID: %v", err)
+						log.Warnf("Invalid left reservation value: %v", err)
 					}
+
+					if v, err := self.DimensionToInt(self.Config.ReserveBounds.Right, self.ScreenWidth); err == nil {
+						strutPartial.Right = uint(v)
+					} else {
+						log.Warnf("Invalid right reservation value: %v", err)
+					}
+
+					if v, err := self.DimensionToInt(self.Config.ReserveBounds.Top, self.ScreeHeight); err == nil {
+						strutPartial.Top = uint(v)
+					} else {
+						log.Warnf("Invalid top reservation value: %v", err)
+					}
+
+					if v, err := self.DimensionToInt(self.Config.ReserveBounds.Bottom, self.ScreeHeight); err == nil {
+						strutPartial.Bottom = uint(v)
+					} else {
+						log.Warnf("Invalid bottom reservation value: %v", err)
+					}
+
+					strutSimple.Left = strutPartial.Left
+					strutSimple.Right = strutPartial.Right
+					strutSimple.Top = strutPartial.Top
+					strutSimple.Bottom = strutPartial.Bottom
+
+					if strutPartial.Left > 0 {
+						strutPartial.LeftStartY = 0
+						strutPartial.LeftEndY = uint(self.ScreeHeight)
+					}
+
+					if strutPartial.Right > 0 {
+						strutPartial.RightStartY = 0
+						strutPartial.RightEndY = uint(self.ScreeHeight)
+					}
+
+					if strutPartial.Top > 0 {
+						strutPartial.TopStartX = 0
+						strutPartial.TopEndX = uint(self.ScreenWidth)
+					}
+
+					if strutPartial.Bottom > 0 {
+						strutPartial.BottomStartX = 0
+						strutPartial.BottomEndX = uint(self.ScreenWidth)
+					}
+
+					log.Debugf("Setting window struts: %+v / %+v", strutPartial, strutSimple)
+
+					if err := ewmh.WmStrutPartialSet(self.xconn, xproto.Window(xid), &strutPartial); err != nil {
+						log.Errorf("Failed to set window space reservations (partials): %v", err)
+					}
+
+					if err := ewmh.WmStrutSet(self.xconn, xproto.Window(xid), &strutSimple); err != nil {
+						log.Errorf("Failed to set window space reservations: %v", err)
+					}
+
 				} else {
-					log.Errorf("Failed to retrieve GDK screen: %v", err)
+					log.Errorf("Failed to retrieve X11 window ID: %v", err)
 				}
 			} else {
 				log.Errorf("Failed to retrieve GDK window: %v", err)
@@ -235,13 +270,6 @@ func (self *Window) Initialize(config *WindowConfig) error {
 		self.webview.LoadURI(fmt.Sprintf("http://%s:%d", self.Server.Address, self.Server.Port))
 	}
 
-	//  size window
-	if w := self.Config.Width; w > 0 {
-		if h := self.Config.Height; h > 0 {
-			self.gtkWindow.SetSizeRequest(w, h)
-		}
-	}
-
 	//  set window stack preference
 	if stacking := self.Config.Stacking; stacking != `` {
 		switch stacking {
@@ -296,6 +324,32 @@ func (self *Window) Initialize(config *WindowConfig) error {
 
 	self.onUpdateScreen(self.gtkWindow.InitiallyUnowned.Object)
 	return nil
+}
+
+func (self *Window) DimensionToInt(expr string, relativeTo int) (int, error) {
+	if v, err := strconv.ParseInt(expr, 10, 64); err == nil {
+		log.Debugf("Absolute dimension: %d", v)
+		return int(v), nil
+	} else {
+		if strings.HasSuffix(expr, `%`) {
+			if self.Realized {
+				if perc, err := strconv.ParseInt(expr[0:len(expr)-1], 10, 64); err == nil {
+					out := (float64(perc/100.0) * float64(relativeTo))
+					log.Debugf("Relative dimension: %d%% of %d = %f", perc, relativeTo, out)
+					return int(out), nil
+				} else {
+					log.Warnf("%v", err)
+					return -1, err
+				}
+			} else {
+				err := fmt.Errorf("Cannot use relative dimensions with unrealized window")
+				log.Warnf("%v", err)
+				return -1, err
+			}
+		}
+
+		return -1, err
+	}
 }
 
 func (self *Window) Show() error {

@@ -8,7 +8,7 @@ import (
 
 const ApplicationName = `corona-ui`
 const ApplicationSummary = `A Webkit-based GTK window for running desktop web applications`
-const ApplicationVersion = `0.0.1`
+const ApplicationVersion = `0.1.5`
 
 var StartedAt = time.Now()
 
