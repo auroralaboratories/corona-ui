@@ -1,8 +1,8 @@
 hash: 5dc0ed0983f75143dedfe95d7436faa42452ab7c38c4be0cf767e0ba0220cd2a
-updated: 2016-04-20T00:35:37.641557682-04:00
+updated: 2016-04-22T00:05:39.347590061-04:00
 imports:
 - name: github.com/auroralaboratories/go-webkit2
-  version: 8dfdd6e629f9547b1e1a132fcff10164a76d45b6
+  version: ec00d00b311aefb304966c6ea813aaeb95fdf8b0
   subpackages:
   - webkit2
 - name: github.com/BurntSushi/xgb
@@ -26,7 +26,7 @@ imports:
 - name: github.com/flosch/pongo2
   version: 7f5515449ea9bbeb00256d9cbb654c556e7d0146
 - name: github.com/ghetzel/diecast
-  version: 77ac79a6328ca4d7cae4dd36e930fb3e8430448f
+  version: e98057c72e6e04e29be64701053d96bd0d4e8803
   subpackages:
   - diecast
   - diecast/engines

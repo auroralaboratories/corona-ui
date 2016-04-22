@@ -74,6 +74,7 @@ func NewWindow(server *Server) *Window {
 
 func (self *Window) Initialize(config *WindowConfig) error {
 	self.Config = config
+	self.Server.SetPayload(`window`, self)
 
 	if xconn, err := xgbutil.NewConn(); err == nil {
 		self.xconn = xconn
@@ -111,6 +112,7 @@ func (self *Window) Initialize(config *WindowConfig) error {
 			self.ScreeHeight = gdkScreen.GetHeight()
 
 			self.Realized = true
+			self.Server.SetPayload(`window`, self)
 		}
 
 		//  move/resize window
@@ -289,38 +291,38 @@ func (self *Window) Initialize(config *WindowConfig) error {
 	self.gtkWindow.SetDecorated(self.Config.Frame)
 
 	//  set window type hint
-	// if typ := self.Config.Type; typ != `` {
-	//     switch typ {
-	//     case `normal`:
-	//         self.gtkWindow.SetTypeHint(gdk.WINDOW_TYPE_HINT_NORMAL)
-	//     case `dialog`:
-	//         self.gtkWindow.SetTypeHint(gdk.WINDOW_TYPE_HINT_DIALOG)
-	//     case `menu`:
-	//         self.gtkWindow.SetTypeHint(gdk.WINDOW_TYPE_HINT_MENU)
-	//     case `toolbar`:
-	//         self.gtkWindow.SetTypeHint(gdk.WINDOW_TYPE_HINT_TOOLBAR)
-	//     case `splashscreen`:
-	//         self.gtkWindow.SetTypeHint(gdk.WINDOW_TYPE_HINT_SPLASHSCREEN)
-	//     case `utility`:
-	//         self.gtkWindow.SetTypeHint(gdk.WINDOW_TYPE_HINT_UTILITY)
-	//     case `dock`:
-	//         self.gtkWindow.SetTypeHint(gdk.WINDOW_TYPE_HINT_DOCK)
-	//     case `desktop`:
-	//         self.gtkWindow.SetTypeHint(gdk.WINDOW_TYPE_HINT_DESKTOP)
-	//     case `dropdown_menu`:
-	//         self.gtkWindow.SetTypeHint(gdk.WINDOW_TYPE_HINT_DROPDOWN_MENU)
-	//     case `popup_menu`:
-	//         self.gtkWindow.SetTypeHint(gdk.WINDOW_TYPE_HINT_POPUP_MENU)
-	//     case `tooltip`:
-	//         self.gtkWindow.SetTypeHint(gdk.WINDOW_TYPE_HINT_TOOLTIP)
-	//     case `notification`:
-	//         self.gtkWindow.SetTypeHint(gdk.WINDOW_TYPE_HINT_NOTIFICATION)
-	//     case `combo`:
-	//         self.gtkWindow.SetTypeHint(gdk.WINDOW_TYPE_HINT_COMBO)
-	//     case `dnd`:
-	//         self.gtkWindow.SetTypeHint(gdk.WINDOW_TYPE_HINT_DND)
-	//     }
-	// }
+	if typ := self.Config.Type; typ != `` {
+		switch typ {
+		case `normal`:
+			self.gtkWindow.SetTypeHint(gdk.TypeHintNormal)
+		case `dialog`:
+			self.gtkWindow.SetTypeHint(gdk.TypeHintDialog)
+		case `menu`:
+			self.gtkWindow.SetTypeHint(gdk.TypeHintMenu)
+		case `toolbar`:
+			self.gtkWindow.SetTypeHint(gdk.TypeHintToolbar)
+		case `splashscreen`:
+			self.gtkWindow.SetTypeHint(gdk.TypeHintSplashscreen)
+		case `utility`:
+			self.gtkWindow.SetTypeHint(gdk.TypeHintUtility)
+		case `dock`:
+			self.gtkWindow.SetTypeHint(gdk.TypeHintDock)
+		case `desktop`:
+			self.gtkWindow.SetTypeHint(gdk.TypeHintDesktop)
+		case `dropdown_menu`:
+			self.gtkWindow.SetTypeHint(gdk.TypeHintDropdown_menu)
+		case `popup_menu`:
+			self.gtkWindow.SetTypeHint(gdk.TypeHintPopup_menu)
+		case `tooltip`:
+			self.gtkWindow.SetTypeHint(gdk.TypeHintTooltip)
+		case `notification`:
+			self.gtkWindow.SetTypeHint(gdk.TypeHintNotification)
+		case `combo`:
+			self.gtkWindow.SetTypeHint(gdk.TypeHintCombo)
+		case `dnd`:
+			self.gtkWindow.SetTypeHint(gdk.TypeHintDnd)
+		}
+	}
 
 	self.onUpdateScreen(self.gtkWindow.InitiallyUnowned.Object)
 	return nil

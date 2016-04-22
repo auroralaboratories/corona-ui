@@ -8,9 +8,9 @@ package gtk
 import "C"
 import (
 	"fmt"
-	"unsafe"
-
 	"github.com/gotk3/gotk3/cairo"
+	"github.com/gotk3/gotk3/gdk"
+	"unsafe"
 )
 
 func (v *Window) SetShape(surface *cairo.Surface) error {
@@ -39,4 +39,13 @@ func (v *Window) SetShape(surface *cairo.Surface) error {
 	}
 
 	return nil
+}
+
+func (v *Window) GetTypeHint() gdk.WindowTypeHint {
+	hint := C.gtk_window_get_type_hint(v.toWindow())
+	return gdk.WindowTypeHint(hint)
+}
+
+func (v *Window) SetTypeHint(hint gdk.WindowTypeHint) {
+	C.gtk_window_set_type_hint(v.toWindow(), C.GdkWindowTypeHint(hint))
 }

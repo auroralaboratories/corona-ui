@@ -72,6 +72,22 @@ func (self *Server) Initialize() error {
 	return self.dc.Initialize()
 }
 
+func (self *Server) SetPayload(key string, value interface{}) {
+	if self.dc != nil {
+		if v, ok := self.dc.Payload[`corona`]; ok {
+			switch v.(type) {
+			case map[string]interface{}:
+				coronaPayload := v.(map[string]interface{})
+				coronaPayload[key] = value
+			}
+		} else {
+			self.dc.Payload[`corona`] = map[string]interface{}{
+				key: value,
+			}
+		}
+	}
+}
+
 func (self *Server) Serve() error {
 	if self.dc != nil {
 		return self.dc.Serve()
