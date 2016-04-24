@@ -1,5 +1,5 @@
 hash: 5dc0ed0983f75143dedfe95d7436faa42452ab7c38c4be0cf767e0ba0220cd2a
-updated: 2016-04-24T18:54:48.05591767-04:00
+updated: 2016-04-24T19:03:08.796640638-04:00
 imports:
 - name: github.com/auroralaboratories/go-webkit2
   version: ec00d00b311aefb304966c6ea813aaeb95fdf8b0
