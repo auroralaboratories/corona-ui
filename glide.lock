@@ -1,5 +1,5 @@
 hash: 5dc0ed0983f75143dedfe95d7436faa42452ab7c38c4be0cf767e0ba0220cd2a
-updated: 2016-04-22T00:05:39.347590061-04:00
+updated: 2016-04-24T18:54:48.05591767-04:00
 imports:
 - name: github.com/auroralaboratories/go-webkit2
   version: ec00d00b311aefb304966c6ea813aaeb95fdf8b0
@@ -26,10 +26,11 @@ imports:
 - name: github.com/flosch/pongo2
   version: 7f5515449ea9bbeb00256d9cbb654c556e7d0146
 - name: github.com/ghetzel/diecast
-  version: e98057c72e6e04e29be64701053d96bd0d4e8803
+  version: ee263ca60891fc752ccae1d2ad330a206cba2e26
   subpackages:
   - diecast
   - diecast/engines
+  - diecast/engines/mustache
   - diecast/engines/pongo
   - diecast/util
 - name: github.com/ghodss/yaml
@@ -42,6 +43,8 @@ imports:
   - glib
   - gtk
   - pango
+- name: github.com/hoisie/mustache
+  version: af524a16a1b1bd467c342969bf37db23433466c4
 - name: github.com/julienschmidt/httprouter
   version: 77366a47451a56bb3ba682481eed85b64fea14e8
 - name: github.com/satori/go.uuid

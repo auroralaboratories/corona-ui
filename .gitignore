@@ -3,3 +3,5 @@
 *.log
 /config.yml
 /vendor
+/util/bindata.go
+/server-only/bin

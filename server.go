@@ -2,19 +2,21 @@ package main
 
 import (
 	"fmt"
+	"github.com/ghetzel/diecast/diecast"
 	"net"
 	"strconv"
 	"strings"
-
-	"github.com/ghetzel/diecast/diecast"
 )
 
 const (
-	DEFAULT_UI_SERVER_ADDR   = `127.0.0.1`
-	DEFAULT_UI_SERVER_PORT   = 0
-	DEFAULT_UI_TEMPLATE_PATH = `src`
-	DEFAULT_UI_STATIC_PATH   = `static`
-	DEFAULT_UI_CONFIG_FILE   = `config.yml`
+	DEFAULT_UI_SERVER_ADDR     = `127.0.0.1`
+	DEFAULT_UI_SERVER_PORT     = 0
+	DEFAULT_UI_TEMPLATE_PATH   = `src`
+	DEFAULT_UI_STATIC_PATH     = `static`
+	DEFAULT_UI_CONFIG_FILE     = `config.yml`
+	DEFAULT_UI_EMBED_PATH      = `embedded`
+	DEFAULT_UI_EMBED_ROUTE     = `/corona/`
+	DEFAULT_UI_EMBED_API_ROUTE = `/corona/api/`
 )
 
 type Server struct {
@@ -24,6 +26,8 @@ type Server struct {
 	ConfigPath   string
 	StaticPath   string
 	LogLevel     string
+	EmbedPath    string
+	EmbedRoute   string
 
 	dc *diecast.Server
 }
@@ -35,6 +39,8 @@ func NewServer() *Server {
 		Port:         DEFAULT_UI_SERVER_PORT,
 		StaticPath:   DEFAULT_UI_STATIC_PATH,
 		TemplatePath: DEFAULT_UI_TEMPLATE_PATH,
+		EmbedPath:    DEFAULT_UI_EMBED_PATH,
+		EmbedRoute:   DEFAULT_UI_EMBED_ROUTE,
 	}
 }
 
@@ -45,6 +51,8 @@ func (self *Server) Initialize() error {
 	self.dc.StaticPath = self.StaticPath
 	self.dc.ConfigPath = self.ConfigPath
 	self.dc.LogLevel = self.LogLevel
+
+	self.registerHandlers()
 
 	if self.Port == 0 {
 		if listener, err := net.Listen(`tcp`, fmt.Sprintf("%s:%d", self.dc.Address, 0)); err == nil {

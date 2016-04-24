@@ -2,18 +2,13 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/auroralaboratories/corona-ui/util"
 	"github.com/codegangsta/cli"
-	"gopkg.in/yaml.v2"
+	"os"
 )
 
-var useAlpha bool = false
 var server *Server
-var config Config = GetDefaultConfig()
 
 func main() {
 	app := cli.NewApp()
@@ -21,6 +16,7 @@ func main() {
 	app.Usage = util.ApplicationSummary
 	app.Version = util.ApplicationVersion
 	app.EnableBashCompletion = false
+
 	app.Action = func(c *cli.Context) {
 		if c.Bool(`quiet`) {
 			util.ParseLogLevel(`quiet`)
@@ -30,39 +26,13 @@ func main() {
 
 		log.Infof("%s v%s started at %s", util.ApplicationName, util.ApplicationVersion, util.StartedAt)
 
-		if data, err := ioutil.ReadFile(c.String(`config`)); err == nil {
-			log.Debugf("Default Configuration: %+v", config)
-
-			if err := yaml.Unmarshal(data, &config); err == nil {
-				log.Infof("Successfully loaded configuration file: %s", c.String(`config`))
-				log.Debugf("Configuration: %+v", config)
-			}
-		}
-
 		//  start the UI server in the background
 		if err := startUiServer(c); err != nil {
 			log.Fatalf("%v", err)
 		}
 
-		//  setup and show the window
-		if c.Bool(`server-only`) {
-			log.Warnf("Started in server-only mode; no GUI elements will be shown.")
-			select {}
-		} else {
-			window := NewWindow(server)
-
-			if len(c.Args()) > 0 {
-				window.URI = c.Args()[0]
-			}
-
-			if err := window.Initialize(&config.Window); err == nil {
-				if err := window.Show(); err != nil {
-					log.Fatalf("%v", err)
-				}
-			} else {
-				log.Fatalf("Failed to initialize window: %v", err)
-			}
-		}
+		log.Warnf("Started in server-only mode; no GUI elements will be shown.")
+		select {}
 	}
 
 	app.Flags = []cli.Flag{
@@ -84,7 +54,7 @@ func main() {
 		cli.IntFlag{
 			Name:  `port, p`,
 			Usage: `The port the diecast UI server should listen on`,
-			Value: DEFAULT_UI_SERVER_PORT,
+			Value: 28419,
 		},
 		cli.StringFlag{
 			Name:  `embed-dir`,
@@ -105,11 +75,6 @@ func main() {
 			Name:  `static-dir, S`,
 			Usage: `The directory containing the UI static content`,
 			Value: DEFAULT_UI_STATIC_PATH,
-		},
-		cli.StringFlag{
-			Name:  `config, c`,
-			Usage: `The path to the configuration file`,
-			Value: DEFAULT_UI_CONFIG_FILE,
 		},
 		cli.BoolFlag{
 			Name:  `server-only`,

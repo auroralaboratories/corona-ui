@@ -228,9 +228,7 @@ func (self *Window) Initialize(config *WindowConfig) error {
 
 		switch event {
 		case webkit2.LoadFinished:
-			if self.Config.Shaped {
-				self.updateWindowShapePixmapFromWebview()
-			}
+			self.RefreshShape()
 		}
 	})
 
@@ -254,10 +252,11 @@ func (self *Window) Initialize(config *WindowConfig) error {
 		log.Warnf("Failed to get GDK window")
 	}
 
-	self.webset.Set("auto-load-images", true)
-	self.webset.Set("enable-plugins", true)
-	self.webset.Set("enable-webgl", true)
-	self.webset.Set("enable-webaudio", true)
+	self.webset.Set(`auto-load-image`, true)
+	self.webset.Set(`enable-javascript`, true)
+	self.webset.Set(`enable-plugins`, true)
+	self.webset.Set(`enable-webaudio`, true)
+	self.webset.Set(`enable-webgl`, true)
 
 	// if webview.GetTransparent() {
 	//     log.Debugf("WebKit transparent window enabled")
@@ -366,6 +365,12 @@ func (self *Window) Show() error {
 
 	gtk.Main()
 	return nil
+}
+
+func (self *Window) RefreshShape() {
+	if self.Config.Shaped {
+		self.updateWindowShapePixmapFromWebview()
+	}
 }
 
 func (self *Window) onUpdateScreen(widgetObj *glib.Object) {
