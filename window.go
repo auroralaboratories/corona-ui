@@ -337,8 +337,8 @@ func (self *Window) DimensionToInt(expr string, relativeTo int) (int, error) {
 	} else {
 		if strings.HasSuffix(expr, `%`) {
 			if self.Realized {
-				if perc, err := strconv.ParseInt(expr[0:len(expr)-1], 10, 64); err == nil {
-					out := (float64(perc/100.0) * float64(relativeTo))
+				if perc, err := strconv.ParseFloat(expr[0:len(expr)-1], 64); err == nil {
+					out := ((perc / 100.0) * float64(relativeTo))
 					log.Debugf("Relative dimension: %d%% of %d = %f", perc, relativeTo, out)
 					return int(out), nil
 				} else {
