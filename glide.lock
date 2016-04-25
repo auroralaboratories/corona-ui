@@ -1,32 +1,32 @@
-hash: 5dc0ed0983f75143dedfe95d7436faa42452ab7c38c4be0cf767e0ba0220cd2a
-updated: 2016-04-24T19:03:08.796640638-04:00
+hash: 4a6c8d726ffa1cd1835d53e71e5235ff21c2e211ced41f2dc894f459e13c8fa3
+updated: 2016-04-24T22:22:25.079143096-04:00
 imports:
 - name: github.com/auroralaboratories/go-webkit2
-  version: ec00d00b311aefb304966c6ea813aaeb95fdf8b0
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
   subpackages:
   - webkit2
 - name: github.com/BurntSushi/xgb
-  version: b3a96fa0bc5f20dd08ed8342359a31b64bd761fa
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
   subpackages:
   - xproto
   - xinerama
   - shape
 - name: github.com/BurntSushi/xgbutil
-  version: 352063876c10d45feb1b6ea213dc0fb619a52740
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
   subpackages:
   - ewmh
   - xevent
   - xprop
 - name: github.com/cloudfoundry-incubator/candiedyaml
-  version: 5cef21e2e4f0fd147973b558d4db7395176bcd95
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
 - name: github.com/codegangsta/cli
-  version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
 - name: github.com/codegangsta/negroni
-  version: c7477ad8e330bef55bf1ebe300cf8aa67c492d1b
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
 - name: github.com/flosch/pongo2
-  version: 7f5515449ea9bbeb00256d9cbb654c556e7d0146
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
 - name: github.com/ghetzel/diecast
-  version: ee263ca60891fc752ccae1d2ad330a206cba2e26
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
   subpackages:
   - diecast
   - diecast/engines
@@ -34,9 +34,9 @@ imports:
   - diecast/engines/pongo
   - diecast/util
 - name: github.com/ghodss/yaml
-  version: 1a6f069841556a7bcaff4a397ca6e8328d266c2f
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
 - name: github.com/gotk3/gotk3
-  version: f08ae2d77873a86f5c8dc46a8b8eecb93272a1f7
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
   subpackages:
   - cairo
   - gdk
@@ -44,24 +44,22 @@ imports:
   - gtk
   - pango
 - name: github.com/hoisie/mustache
-  version: af524a16a1b1bd467c342969bf37db23433466c4
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
 - name: github.com/julienschmidt/httprouter
-  version: 77366a47451a56bb3ba682481eed85b64fea14e8
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
 - name: github.com/satori/go.uuid
-  version: f9ab0dce87d815821e221626b772e3475a0d2749
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
 - name: github.com/shutterstock/go-stockutil
-  version: 45fbaaaf36a08d5f6764c57cf3a2143e5d894bca
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
   subpackages:
   - sliceutil
   - stringutil
 - name: github.com/Sirupsen/logrus
-  version: 081307d9bc1364753142d5962fc1d795c742baaf
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
 - name: github.com/sqs/gojs
-  version: 80bdfa8b7d0a0c118220bece71083f2527e7bbc4
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
 - name: golang.org/x/sys
-  version: f64b50fbea64174967a8882830d621a18ee1548e
+  version: 0ba733ecd6517a1e332e3b6552f877d9c2a16caf
   subpackages:
   - unix
-- name: gopkg.in/yaml.v2
-  version: a83829b6f1293c91addabc89d0571c246397bbf4
 devImports: []

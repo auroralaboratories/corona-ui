@@ -20,27 +20,30 @@ const (
 )
 
 type Server struct {
-	Address      string
-	Port         int
-	TemplatePath string
-	ConfigPath   string
-	StaticPath   string
-	LogLevel     string
-	EmbedPath    string
-	EmbedRoute   string
+	Address       string  `json:"address"`
+	Port          int     `json:"port"`
+	TemplatePath  string  `json:"template_path"`
+	ConfigPath    string  `json:"config_path"`
+	StaticPath    string  `json:"static_path"`
+	LogLevel      string  `json:"log_level"`
+	EmbedPath     string  `json:"embed_path"`
+	EmbedRoute    string  `json:"embed_route"`
+	EmbedApiRoute string  `json:"embed_api_route"`
+	Window        *Window `json:"-"`
 
 	dc *diecast.Server
 }
 
 func NewServer() *Server {
 	return &Server{
-		Address:      DEFAULT_UI_SERVER_ADDR,
-		ConfigPath:   DEFAULT_UI_CONFIG_FILE,
-		Port:         DEFAULT_UI_SERVER_PORT,
-		StaticPath:   DEFAULT_UI_STATIC_PATH,
-		TemplatePath: DEFAULT_UI_TEMPLATE_PATH,
-		EmbedPath:    DEFAULT_UI_EMBED_PATH,
-		EmbedRoute:   DEFAULT_UI_EMBED_ROUTE,
+		Address:       DEFAULT_UI_SERVER_ADDR,
+		ConfigPath:    DEFAULT_UI_CONFIG_FILE,
+		Port:          DEFAULT_UI_SERVER_PORT,
+		StaticPath:    DEFAULT_UI_STATIC_PATH,
+		TemplatePath:  DEFAULT_UI_TEMPLATE_PATH,
+		EmbedPath:     DEFAULT_UI_EMBED_PATH,
+		EmbedRoute:    DEFAULT_UI_EMBED_ROUTE,
+		EmbedApiRoute: DEFAULT_UI_EMBED_API_ROUTE,
 	}
 }
 

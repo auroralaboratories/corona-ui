@@ -1,7 +1,7 @@
 package main
 
 type Config struct {
-	Window WindowConfig `yaml:"window"`
+	Window WindowConfig `json:"window"`
 }
 
 func GetDefaultConfig() Config {
@@ -11,7 +11,7 @@ func GetDefaultConfig() Config {
 			Height: ``,
 			X:      ``,
 			Y:      ``,
-			Background: Color{
+			Background: &Color{
 				Red:   1.0,
 				Green: 1.0,
 				Blue:  1.0,

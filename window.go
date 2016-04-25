@@ -16,54 +16,52 @@ import (
 )
 
 type Color struct {
-	Red   float64 `yaml:"red"`
-	Green float64 `yaml:"green"`
-	Blue  float64 `yaml:"blue"`
-	Alpha float64 `yaml:"alpha"`
+	Red   float64 `json:"red"`
+	Green float64 `json:"green"`
+	Blue  float64 `json:"blue"`
+	Alpha float64 `json:"alpha"`
 }
 
 type Reservation struct {
-	Left   string `yaml:"left"`
-	Right  string `yaml:"right"`
-	Top    string `yaml:"top"`
-	Bottom string `yaml:"bottom"`
+	Left   string `json:"left"`
+	Right  string `json:"right"`
+	Top    string `json:"top"`
+	Bottom string `json:"bottom"`
 }
 
 type WindowConfig struct {
-	Width         string      `yaml:"width"`
-	Height        string      `yaml:"height"`
-	X             string      `yaml:"x"`
-	Y             string      `yaml:"y"`
-	Background    Color       `yaml:"background"`
-	Frame         bool        `yaml:"frame"`
-	Position      string      `yaml:"position"`
-	Resizable     bool        `yaml:"resizable"`
-	Stacking      string      `yaml:"stacking"`
-	Transparent   bool        `yaml:"transparent"`
-	Shaped        bool        `yaml:"shaped"`
-	Reserve       bool        `yaml:"reserve"`
-	ReserveBounds Reservation `yaml:"bounds"`
-	KnockoutLimit uint8       `yaml:"knockout_limit"`
-	Type          string      `yaml:"type"`
+	Width         string       `json:"width,omitempty"`
+	Height        string       `json:"height,omitempty"`
+	X             string       `json:"x,omitempty"`
+	Y             string       `json:"y,omitempty"`
+	Background    *Color       `json:"background,omitempty"`
+	Frame         bool         `json:"frame"`
+	Position      string       `json:"position,omitempty"`
+	Resizable     bool         `json:"resizable"`
+	Stacking      string       `json:"stacking,omitempty"`
+	Transparent   bool         `json:"transparent"`
+	Shaped        bool         `json:"shaped"`
+	Reserve       bool         `json:"reserve"`
+	ReserveBounds *Reservation `json:"bounds,omitempty"`
+	Type          string       `json:"type,omitempty"`
 }
 
 type Window struct {
-	Config      *WindowConfig
-	URI         string
-	Server      *Server
-	Realized    bool
-	Width       int
-	Height      int
-	X           int
-	Y           int
-	ScreenWidth int
-	ScreeHeight int
-
-	xconn     *xgbutil.XUtil
-	gtkWindow *gtk.Window
-	layout    *gtk.Layout
-	webview   *webkit2.WebView
-	webset    *webkit2.Settings
+	Config      *WindowConfig `json:"config"`
+	URI         string        `json:"uri"`
+	Server      *Server       `json:"server"`
+	Realized    bool          `json:"realized"`
+	Width       int           `json:"width"`
+	Height      int           `json:"height"`
+	X           int           `json:"x"`
+	Y           int           `json:"y"`
+	ScreenWidth int           `json:"screen_width"`
+	ScreeHeight int           `json:"screen_height"`
+	xconn       *xgbutil.XUtil
+	gtkWindow   *gtk.Window
+	layout      *gtk.Layout
+	webview     *webkit2.WebView
+	webset      *webkit2.Settings
 }
 
 func NewWindow(server *Server) *Window {
@@ -103,15 +101,18 @@ func (self *Window) Initialize(config *WindowConfig) error {
 		gtk.MainQuit()
 	})
 
+	self.gtkWindow.Connect(`configure-event`, func() {
+		self.onResizeOrMove()
+	})
+
 	self.gtkWindow.Connect(`realize`, func() {
 		if gdkScreen, err := self.gtkWindow.GetScreen(); err == nil {
-			self.X, self.Y = self.gtkWindow.GetPosition()
-			self.Width, self.Height = self.gtkWindow.GetSize()
-
 			self.ScreenWidth = gdkScreen.GetWidth()
 			self.ScreeHeight = gdkScreen.GetHeight()
 
 			self.Realized = true
+
+			self.onResizeOrMove()
 			self.Server.SetPayload(`window`, self)
 		}
 
@@ -265,10 +266,12 @@ func (self *Window) Initialize(config *WindowConfig) error {
 	// layout.Add(webview)
 	self.gtkWindow.Add(self.webview)
 
-	if self.URI != `` {
+	if self.URI == `` {
+		self.URI = fmt.Sprintf("http://%s:%d", self.Server.Address, self.Server.Port)
+	}
+
+	if self.Server != nil {
 		self.webview.LoadURI(self.URI)
-	} else if self.Server != nil {
-		self.webview.LoadURI(fmt.Sprintf("http://%s:%d", self.Server.Address, self.Server.Port))
 	}
 
 	//  set window stack preference
@@ -370,6 +373,13 @@ func (self *Window) Show() error {
 func (self *Window) RefreshShape() {
 	if self.Config.Shaped {
 		self.updateWindowShapePixmapFromWebview()
+	}
+}
+
+func (self *Window) onResizeOrMove() {
+	if self.Realized {
+		self.X, self.Y = self.gtkWindow.GetPosition()
+		self.Width, self.Height = self.gtkWindow.GetSize()
 	}
 }
 

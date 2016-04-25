@@ -8,7 +8,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/auroralaboratories/corona-ui/util"
 	"github.com/codegangsta/cli"
-	"gopkg.in/yaml.v2"
+	"github.com/ghodss/yaml"
 )
 
 var useAlpha bool = false
@@ -50,6 +50,7 @@ func main() {
 			select {}
 		} else {
 			window := NewWindow(server)
+			server.Window = window
 
 			if len(c.Args()) > 0 {
 				window.URI = c.Args()[0]
