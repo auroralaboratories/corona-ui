@@ -14,11 +14,6 @@ import:
 - package: github.com/ghetzel/diecast
   subpackages:
   - diecast
-- package: github.com/gotk3/gotk3
-  subpackages:
-  - cairo
-  - gdk
-  - glib
-  - gtk
 - package: github.com/satori/go.uuid
 - package: github.com/ghodss/yaml
+- package: github.com/auroralaboratories/gotk3

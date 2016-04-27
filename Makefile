@@ -12,7 +12,6 @@ fmt:
 
 build:
 	pkg-config --libs 'webkit2gtk-4.0 >= 2.8'
-	rsync -rv ./patches/ ./vendor/
 	@which go-bindata > /dev/null 2>&1 || go get github.com/jteeuwen/go-bindata/...
 	which go-bindata
 	@go-bindata --pkg util --prefix embed embed
