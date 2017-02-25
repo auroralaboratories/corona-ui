@@ -5,7 +5,6 @@ import (
 	"github.com/BurntSushi/xgb/xproto"
 	"github.com/BurntSushi/xgbutil"
 	"github.com/BurntSushi/xgbutil/ewmh"
-	log "github.com/Sirupsen/logrus"
 	"github.com/auroralaboratories/go-webkit2/webkit2"
 	"github.com/auroralaboratories/gotk3/cairo"
 	"github.com/auroralaboratories/gotk3/gdk"
@@ -72,7 +71,6 @@ func NewWindow(server *Server) *Window {
 
 func (self *Window) Initialize(config *WindowConfig) error {
 	self.Config = config
-	self.Server.SetPayload(`window`, self)
 
 	if xconn, err := xgbutil.NewConn(); err == nil {
 		self.xconn = xconn
@@ -113,7 +111,6 @@ func (self *Window) Initialize(config *WindowConfig) error {
 			self.Realized = true
 
 			self.onResizeOrMove()
-			self.Server.SetPayload(`window`, self)
 		}
 
 		//  move/resize window
@@ -159,25 +156,25 @@ func (self *Window) Initialize(config *WindowConfig) error {
 					if v, err := self.DimensionToInt(self.Config.ReserveBounds.Left, self.ScreenWidth); err == nil {
 						strutPartial.Left = uint(v)
 					} else {
-						log.Warnf("Invalid left reservation value: %v", err)
+						log.Warningf("Invalid left reservation value: %v", err)
 					}
 
 					if v, err := self.DimensionToInt(self.Config.ReserveBounds.Right, self.ScreenWidth); err == nil {
 						strutPartial.Right = uint(v)
 					} else {
-						log.Warnf("Invalid right reservation value: %v", err)
+						log.Warningf("Invalid right reservation value: %v", err)
 					}
 
 					if v, err := self.DimensionToInt(self.Config.ReserveBounds.Top, self.ScreeHeight); err == nil {
 						strutPartial.Top = uint(v)
 					} else {
-						log.Warnf("Invalid top reservation value: %v", err)
+						log.Warningf("Invalid top reservation value: %v", err)
 					}
 
 					if v, err := self.DimensionToInt(self.Config.ReserveBounds.Bottom, self.ScreeHeight); err == nil {
 						strutPartial.Bottom = uint(v)
 					} else {
-						log.Warnf("Invalid bottom reservation value: %v", err)
+						log.Warningf("Invalid bottom reservation value: %v", err)
 					}
 
 					strutSimple.Left = strutPartial.Left
@@ -250,7 +247,7 @@ func (self *Window) Initialize(config *WindowConfig) error {
 			self.webview.SetBackgroundColor(gdk.NewRGBA(1.0, 1.0, 1.0, 0.0))
 		}
 	} else {
-		log.Warnf("Failed to get GDK window")
+		log.Warningf("Failed to get GDK window")
 	}
 
 	self.webset.Set(`auto-load-image`, true)
@@ -267,7 +264,7 @@ func (self *Window) Initialize(config *WindowConfig) error {
 	self.gtkWindow.Add(self.webview)
 
 	if self.URI == `` {
-		self.URI = fmt.Sprintf("http://%s:%d", self.Server.Address, self.Server.Port)
+		self.URI = fmt.Sprintf("http://%s", self.Server.Address)
 	}
 
 	if self.Server != nil {
@@ -342,12 +339,12 @@ func (self *Window) DimensionToInt(expr string, relativeTo int) (int, error) {
 					log.Debugf("Relative dimension: %d%% of %d = %f", perc, relativeTo, out)
 					return int(out), nil
 				} else {
-					log.Warnf("%v", err)
+					log.Warningf("%v", err)
 					return -1, err
 				}
 			} else {
 				err := fmt.Errorf("Cannot use relative dimensions with unrealized window")
-				log.Warnf("%v", err)
+				log.Warningf("%v", err)
 				return -1, err
 			}
 		}

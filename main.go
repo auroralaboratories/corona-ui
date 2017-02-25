@@ -1,18 +1,22 @@
 package main
 
 import (
-	"fmt"
+	"github.com/auroralaboratories/corona-ui/util"
+	"github.com/ghetzel/cli"
+	"github.com/ghodss/yaml"
+	"github.com/op/go-logging"
 	"io/ioutil"
 	"os"
-
-	log "github.com/Sirupsen/logrus"
-	"github.com/auroralaboratories/corona-ui/util"
-	"github.com/codegangsta/cli"
-	"github.com/ghodss/yaml"
 )
 
+const (
+	DEFAULT_UI_CONFIG_FILE = `config.yml`
+)
+
+var log = logging.MustGetLogger(`main`)
+
 var useAlpha bool = false
-var server *Server
+var server Server
 var config Config = GetDefaultConfig()
 
 func main() {
@@ -21,13 +25,47 @@ func main() {
 	app.Usage = util.ApplicationSummary
 	app.Version = util.ApplicationVersion
 	app.EnableBashCompletion = false
-	app.Action = func(c *cli.Context) {
-		if c.Bool(`quiet`) {
-			util.ParseLogLevel(`quiet`)
+
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:   `log-level, L`,
+			Usage:  `Level of log output verbosity`,
+			Value:  `info`,
+			EnvVar: `LOGLEVEL`,
+		},
+		cli.BoolFlag{
+			Name:  `quiet, q`,
+			Usage: `Don't print any log output to standard error`,
+		},
+		cli.StringFlag{
+			Name:  `address, a`,
+			Usage: `The address the diecast UI server should listen on`,
+			Value: DEFAULT_UI_SERVER_ADDR,
+		},
+		cli.StringFlag{
+			Name:  `config, c`,
+			Usage: `The path to the configuration file`,
+			Value: DEFAULT_UI_CONFIG_FILE,
+		},
+		cli.BoolFlag{
+			Name:  `server-only`,
+			Usage: `Only start the UI server (and skip creating and showing the window)`,
+		},
+	}
+
+	app.Before = func(c *cli.Context) error {
+		logging.SetFormatter(logging.MustStringFormatter(`%{color}%{level:.4s}%{color:reset}[%{id:04d}] %{message}`))
+
+		if level, err := logging.LogLevel(c.String(`log-level`)); err == nil {
+			logging.SetLevel(level, ``)
 		} else {
-			util.ParseLogLevel(c.String(`log-level`))
+			return err
 		}
 
+		return nil
+	}
+
+	app.Action = func(c *cli.Context) {
 		log.Infof("%s v%s started at %s", util.ApplicationName, util.ApplicationVersion, util.StartedAt)
 
 		if data, err := ioutil.ReadFile(c.String(`config`)); err == nil {
@@ -46,10 +84,10 @@ func main() {
 
 		//  setup and show the window
 		if c.Bool(`server-only`) {
-			log.Warnf("Started in server-only mode; no GUI elements will be shown.")
+			log.Noticef("Started in server-only mode; no GUI elements will be shown.")
 			select {}
 		} else {
-			window := NewWindow(server)
+			window := NewWindow(&server)
 			server.Window = window
 
 			if len(c.Args()) > 0 {
@@ -66,85 +104,22 @@ func main() {
 		}
 	}
 
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:   `log-level, L`,
-			Usage:  `Level of log output verbosity`,
-			Value:  `info`,
-			EnvVar: `LOGLEVEL`,
-		},
-		cli.BoolFlag{
-			Name:  `quiet, q`,
-			Usage: `Don't print any log output to standard error`,
-		},
-		cli.StringFlag{
-			Name:  `address, a`,
-			Usage: `The address the diecast UI server should listen on`,
-			Value: DEFAULT_UI_SERVER_ADDR,
-		},
-		cli.IntFlag{
-			Name:  `port, p`,
-			Usage: `The port the diecast UI server should listen on`,
-			Value: DEFAULT_UI_SERVER_PORT,
-		},
-		cli.StringFlag{
-			Name:  `embed-dir`,
-			Usage: `The directory containing embedded assets`,
-			Value: DEFAULT_UI_EMBED_PATH,
-		},
-		cli.StringFlag{
-			Name:  `embed-route`,
-			Usage: `The HTTP path that will be used to serve embedded assets`,
-			Value: DEFAULT_UI_EMBED_ROUTE,
-		},
-		cli.StringFlag{
-			Name:  `template-dir, T`,
-			Usage: `The directory containing the UI template definitions`,
-			Value: DEFAULT_UI_TEMPLATE_PATH,
-		},
-		cli.StringFlag{
-			Name:  `static-dir, S`,
-			Usage: `The directory containing the UI static content`,
-			Value: DEFAULT_UI_STATIC_PATH,
-		},
-		cli.StringFlag{
-			Name:  `config, c`,
-			Usage: `The path to the configuration file`,
-			Value: DEFAULT_UI_CONFIG_FILE,
-		},
-		cli.BoolFlag{
-			Name:  `server-only`,
-			Usage: `Only start the UI server (and skip creating and showing the window)`,
-		},
-	}
-
 	app.Run(os.Args)
 }
 
 func startUiServer(c *cli.Context) error {
-	server = NewServer()
+	server = config.Server
 	server.Address = c.String(`address`)
 	server.ConfigPath = c.String(`config`)
-	server.EmbedPath = c.String(`embed-dir`)
-	server.EmbedRoute = c.String(`embed-route`)
-	server.Port = c.Int(`port`)
-	server.StaticPath = c.String(`static-dir`)
-	server.TemplatePath = c.String(`template-dir`)
 
-	if c.Bool(`quiet`) {
-		server.LogLevel = `quiet`
-	} else {
-		server.LogLevel = c.String(`log-level`)
+	if c.NArg() > 0 {
+		server.RootPath = c.Args().First()
 	}
 
-	if err := server.Initialize(); err == nil {
-		go func() {
-			log.Infof("UI server at http://%s:%d", server.Address, server.Port)
-			server.Serve()
-		}()
-	} else {
-		return fmt.Errorf("Failed to initialize UI server: %v", err)
-	}
+	go func() {
+		log.Infof("UI server at http://%s", server.Address)
+		server.Serve()
+	}()
 
 	return nil
 }

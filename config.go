@@ -1,6 +1,7 @@
 package main
 
 type Config struct {
+	Server Server       `json:"server"`
 	Window WindowConfig `json:"window"`
 }
 

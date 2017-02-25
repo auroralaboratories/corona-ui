@@ -1,14 +1,10 @@
-all: vendor fmt build
-
-update:
-	glide up --strip-vcs --update-vendored
-
-vendor:
-	go list github.com/Masterminds/glide
-	glide install --strip-vcs --update-vendored
+all: fmt deps build
 
 fmt:
-	gofmt -w .
+	gofmt -w ./..
+
+deps:
+	go get .
 
 build:
 	pkg-config --libs 'webkit2gtk-4.0 >= 2.8'
