@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"github.com/ghetzel/diecast"
 	"github.com/husobee/vestigo"
 	"github.com/urfave/negroni"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -43,4 +45,14 @@ func (self *Server) Serve() error {
 	log.Debugf("Running API server at %s", self.Address)
 	server.Run(self.Address)
 	return nil
+}
+
+func (self *Server) GetURL() string {
+	addr := self.Address
+
+	if strings.HasPrefix(addr, `:`) {
+		addr = `127.0.0.1` + addr
+	}
+
+	return fmt.Sprintf("http://%s", addr)
 }

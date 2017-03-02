@@ -3,10 +3,13 @@ package main
 import (
 	"github.com/auroralaboratories/corona-ui/util"
 	"github.com/ghetzel/cli"
+	"github.com/ghetzel/go-stockutil/pathutil"
 	"github.com/ghodss/yaml"
 	"github.com/op/go-logging"
 	"io/ioutil"
 	"os"
+	"path"
+	"strings"
 )
 
 const (
@@ -18,6 +21,7 @@ var log = logging.MustGetLogger(`main`)
 var useAlpha bool = false
 var server Server
 var config Config = GetDefaultConfig()
+var rootPath string
 
 func main() {
 	app := cli.NewApp()
@@ -67,8 +71,22 @@ func main() {
 
 	app.Action = func(c *cli.Context) {
 		log.Infof("%s v%s started at %s", util.ApplicationName, util.ApplicationVersion, util.StartedAt)
+		var configPath string
 
-		if data, err := ioutil.ReadFile(c.String(`config`)); err == nil {
+		if cp := c.String(`config`); strings.HasPrefix(cp, `/`) {
+			configPath = cp
+		} else if c.NArg() > 0 {
+			if expanded, err := pathutil.ExpandUser(c.Args().First()); err == nil {
+				rootPath = expanded
+				configPath = path.Join(expanded, cp)
+			} else {
+				log.Fatal(err)
+			}
+		} else {
+			configPath = cp
+		}
+
+		if data, err := ioutil.ReadFile(configPath); err == nil {
 			log.Debugf("Default Configuration: %+v", config)
 
 			if err := yaml.Unmarshal(data, &config); err == nil {
@@ -89,10 +107,7 @@ func main() {
 		} else {
 			window := NewWindow(&server)
 			server.Window = window
-
-			if len(c.Args()) > 0 {
-				window.URI = c.Args()[0]
-			}
+			window.URI = server.GetURL()
 
 			if err := window.Initialize(&config.Window); err == nil {
 				if err := window.Show(); err != nil {
@@ -110,10 +125,9 @@ func main() {
 func startUiServer(c *cli.Context) error {
 	server = config.Server
 	server.Address = c.String(`address`)
-	server.ConfigPath = c.String(`config`)
 
-	if c.NArg() > 0 {
-		server.RootPath = c.Args().First()
+	if rootPath != `` {
+		server.RootPath = rootPath
 	}
 
 	go func() {
