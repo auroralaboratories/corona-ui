@@ -1,4 +1,10 @@
+---
+bindings:
+- name: corona
+  resource: ':/corona/api/status'
+---
 "use strict";
-var corona = {
 
+var corona = {
+    version: '{{ .bindings.corona.version }}',
 };

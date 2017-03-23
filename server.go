@@ -1,7 +1,10 @@
 package main
 
+//go:generate esc -o util/static.go -pkg util -prefix embed embed
+
 import (
 	"fmt"
+	"github.com/auroralaboratories/corona-ui/util"
 	"github.com/ghetzel/diecast"
 	"github.com/husobee/vestigo"
 	"github.com/urfave/negroni"
@@ -17,30 +20,46 @@ type Server struct {
 	Address    string  `json:"address"`
 	RootPath   string  `json:"root"`
 	ConfigPath string  `json:"config_path"`
+	EmbedPath  string  `json:"embed_path"`
 	Window     *Window `json:"-"`
 }
 
-func NewServer() *Server {
-	return &Server{
-		Address: DEFAULT_UI_SERVER_ADDR,
-	}
-}
-
 func (self *Server) Serve() error {
-	server := negroni.New()
-	router := vestigo.NewRouter()
-	ui := diecast.NewServer(self.RootPath, `*.html`)
+	var embedFS http.FileSystem
 
-	if err := ui.Initialize(); err != nil {
+	if self.EmbedPath == `` {
+		embedFS = util.FS(false)
+		log.Debugf("Using embedded")
+	} else {
+		embedFS = http.Dir(self.EmbedPath)
+	}
+
+	server := negroni.New()
+	mux := http.NewServeMux()
+	appRenderer := diecast.NewServer(`/`, `*.html`, `*.js`, `*.css`)
+	appRenderer.VerifyFile = `/index.html`
+	appRenderer.SetFileSystem(http.Dir(self.RootPath))
+
+	// URLs under "/corona/{!api}*" are handled by the embedded filesystem
+	appRenderer.SetMounts([]diecast.Mount{
+		{
+			MountPoint: `/corona`,
+			FileSystem: embedFS,
+		},
+	})
+
+	if err := appRenderer.Initialize(); err != nil {
 		return err
 	}
 
-	// routes not registered below will fallback to the UI server
-	vestigo.CustomNotFoundHandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		ui.ServeHTTP(w, req)
-	})
+	api := vestigo.NewRouter()
+	self.setupApiRoutes(api)
 
-	server.UseHandler(router)
+	mux.Handle(`/corona/api/`, api)
+	mux.Handle(`/`, appRenderer)
+
+	server.UseHandler(mux)
+	server.Use(NewRequestLogger())
 
 	log.Debugf("Running API server at %s", self.Address)
 	server.Run(self.Address)
@@ -55,4 +74,12 @@ func (self *Server) GetURL() string {
 	}
 
 	return fmt.Sprintf("http://%s", addr)
+}
+
+func (self *Server) setupApiRoutes(api *vestigo.Router) {
+	api.Get(`/corona/api/status`, func(w http.ResponseWriter, req *http.Request) {
+		util.Respond(w, map[string]interface{}{
+			`version`: util.ApplicationVersion,
+		})
+	})
 }

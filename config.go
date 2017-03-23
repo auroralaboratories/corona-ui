@@ -8,10 +8,11 @@ type Config struct {
 func GetDefaultConfig() Config {
 	return Config{
 		Window: WindowConfig{
-			Width:  ``,
-			Height: ``,
-			X:      ``,
-			Y:      ``,
+			Width:   ``,
+			Height:  ``,
+			X:       ``,
+			Y:       ``,
+			Monitor: -1,
 			Background: &Color{
 				Red:   1.0,
 				Green: 1.0,

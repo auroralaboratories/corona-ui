@@ -28,11 +28,39 @@ type Reservation struct {
 	Bottom string `json:"bottom"`
 }
 
+type Monitor struct {
+	Number  int  `json:"number"`
+	Primary bool `json:"primary"`
+	Width   uint `json:"width"`
+	Height  uint `json:"height"`
+	X       int  `json:"x"`
+	Y       int  `json:"y"`
+}
+
+func (self Monitor) String() string {
+	pri := ``
+
+	if self.Primary {
+		pri = ` (primary)`
+	}
+
+	return fmt.Sprintf(
+		"Monitor %d: %dx%d+%d+%d%s",
+		self.Number,
+		self.Width,
+		self.Height,
+		self.X,
+		self.Y,
+		pri,
+	)
+}
+
 type WindowConfig struct {
 	Width         string       `json:"width,omitempty"`
 	Height        string       `json:"height,omitempty"`
 	X             string       `json:"x,omitempty"`
 	Y             string       `json:"y,omitempty"`
+	Monitor       int          `json:"monitor"`
 	Background    *Color       `json:"background,omitempty"`
 	Frame         bool         `json:"frame"`
 	Position      string       `json:"position,omitempty"`
@@ -54,6 +82,7 @@ type Window struct {
 	Height      int           `json:"height"`
 	X           int           `json:"x"`
 	Y           int           `json:"y"`
+	Monitors    []Monitor     `json:"monitors"`
 	ScreenWidth int           `json:"screen_width"`
 	ScreeHeight int           `json:"screen_height"`
 	xconn       *xgbutil.XUtil
@@ -65,7 +94,8 @@ type Window struct {
 
 func NewWindow(server *Server) *Window {
 	return &Window{
-		Server: server,
+		Server:   server,
+		Monitors: make([]Monitor, 0),
 	}
 }
 
@@ -105,20 +135,57 @@ func (self *Window) Initialize(config *WindowConfig) error {
 
 	self.gtkWindow.Connect(`realize`, func() {
 		if gdkScreen, err := self.gtkWindow.GetScreen(); err == nil {
-			self.ScreenWidth = gdkScreen.GetWidth()
-			self.ScreeHeight = gdkScreen.GetHeight()
+			numMonitors := gdkScreen.GetNMonitors()
+			primaryMonitor := gdkScreen.GetPrimaryMonitor()
+
+			for i := 0; i < numMonitors; i++ {
+				if geom := gdkScreen.GetMonitorGeometry(i); geom != nil {
+					monitor := Monitor{
+						Number:  i,
+						Primary: (i == primaryMonitor),
+						Width:   uint(geom.GetWidth()),
+						Height:  uint(geom.GetHeight()),
+						X:       geom.GetX(),
+						Y:       geom.GetY(),
+					}
+
+					log.Debugf("%v", monitor)
+					self.Monitors = append(self.Monitors, monitor)
+
+					if (self.Config.Monitor < 0 && i == primaryMonitor) || (i == self.Config.Monitor) {
+						self.ScreenWidth = geom.GetWidth()
+						self.ScreeHeight = geom.GetHeight()
+					}
+				}
+			}
 
 			self.Realized = true
 
 			self.onResizeOrMove()
+		} else {
+			log.Error(err)
 		}
 
 		//  move/resize window
 		if pos := self.Config.Position; pos == `` {
-			if x, err := self.DimensionToInt(self.Config.X, self.ScreenWidth); err == nil && x >= 0 {
-				if y, err := self.DimensionToInt(self.Config.Y, self.ScreeHeight); err == nil && y >= 0 {
-					self.gtkWindow.Move(x, y)
+			if x, err := self.DimensionToInt(self.Config.X, self.ScreenWidth); err == nil {
+				if y, err := self.DimensionToInt(self.Config.Y, self.ScreeHeight); err == nil {
+					log.Debugf("Offsetting to monitor %d", self.Config.Monitor)
+
+					if self.Config.Monitor >= 0 && self.Config.Monitor < len(self.Monitors) {
+						x += self.Monitors[self.Config.Monitor].X
+						y += self.Monitors[self.Config.Monitor].Y
+					}
+
+					if x > 0 || y > 0 {
+						log.Debugf("Moving to %d,%d", x, y)
+						self.gtkWindow.Move(x, y)
+					}
+				} else {
+					log.Error(err)
 				}
+			} else {
+				log.Error(err)
 			}
 		} else {
 			var position gtk.WindowPosition
@@ -142,7 +209,7 @@ func (self *Window) Initialize(config *WindowConfig) error {
 		//  size window
 		if w, err := self.DimensionToInt(self.Config.Width, self.ScreenWidth); err == nil && w > 0 {
 			if h, err := self.DimensionToInt(self.Config.Height, self.ScreeHeight); err == nil && h > 0 {
-				self.gtkWindow.SetSizeRequest(w, h)
+				self.gtkWindow.SetDefaultSize(w, h)
 			}
 		}
 
@@ -289,6 +356,9 @@ func (self *Window) Initialize(config *WindowConfig) error {
 	//  decorated? (has window frame)
 	self.gtkWindow.SetDecorated(self.Config.Frame)
 
+	// set default size
+	self.gtkWindow.SetDefaultSize(-1, -1)
+
 	//  set window type hint
 	if typ := self.Config.Type; typ != `` {
 		switch typ {
@@ -328,6 +398,10 @@ func (self *Window) Initialize(config *WindowConfig) error {
 }
 
 func (self *Window) DimensionToInt(expr string, relativeTo int) (int, error) {
+	if expr == `` {
+		expr = `0`
+	}
+
 	if v, err := strconv.ParseInt(expr, 10, 64); err == nil {
 		log.Debugf("Absolute dimension: %d", v)
 		return int(v), nil
@@ -336,7 +410,7 @@ func (self *Window) DimensionToInt(expr string, relativeTo int) (int, error) {
 			if self.Realized {
 				if perc, err := strconv.ParseFloat(expr[0:len(expr)-1], 64); err == nil {
 					out := ((perc / 100.0) * float64(relativeTo))
-					log.Debugf("Relative dimension: %d%% of %d = %f", perc, relativeTo, out)
+					log.Debugf("Relative dimension: %g%% of %d = %g", perc, relativeTo, out)
 					return int(out), nil
 				} else {
 					log.Warningf("%v", err)

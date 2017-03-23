@@ -2,4 +2,5 @@
 window:
   width:  50%
   height: 50%
-  position: center
+  # position: center
+  monitor: 1

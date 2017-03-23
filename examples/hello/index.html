@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script type="text/javascript" src="/corona/main.js"></script>
+        <link rel="stylesheet" type="text/css" href="/corona/base.css">
+
+        <style type="text/css">
+            #root {
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                left: 0;
+                padding: 0;
+                display: flex;
+                flex-flow: row;
+                background-color: lightblue;
+            }
+
+            #root > nav {
+                margin: 4px;
+                padding: 5px;
+                border-radius: 7pt;
+                background: darkblue;
+                flex: 1 6 200px;
+                order: 1;
+            }
+
+            #root > section.main {
+                margin: 4px;
+                padding: 5px;
+                border: 1px solid #cccc33;
+                border-radius: 7pt;
+                background: #dddd88;
+                flex: 3 1 60%;
+                order: 2;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="root">
+            <nav>
+
+            </nav>
+
+            <section class="main">
+
+            </section>
+        </div>
+    </body>
+</html>

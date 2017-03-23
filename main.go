@@ -34,7 +34,7 @@ func main() {
 		cli.StringFlag{
 			Name:   `log-level, L`,
 			Usage:  `Level of log output verbosity`,
-			Value:  `info`,
+			Value:  `debug`,
 			EnvVar: `LOGLEVEL`,
 		},
 		cli.BoolFlag{
@@ -55,6 +55,10 @@ func main() {
 			Name:  `server-only`,
 			Usage: `Only start the UI server (and skip creating and showing the window)`,
 		},
+		cli.StringFlag{
+			Name:  `embed-path`,
+			Usage: `The filesystem path to the files accessible under the "/corona" URL tree.`,
+		},
 	}
 
 	app.Before = func(c *cli.Context) error {
@@ -65,6 +69,8 @@ func main() {
 		} else {
 			return err
 		}
+
+		logging.SetLevel(logging.INFO, `diecast`)
 
 		return nil
 	}
@@ -130,9 +136,14 @@ func startUiServer(c *cli.Context) error {
 		server.RootPath = rootPath
 	}
 
+	server.EmbedPath = c.String(`embed-path`)
+
 	go func() {
 		log.Infof("UI server at http://%s", server.Address)
-		server.Serve()
+
+		if err := server.Serve(); err != nil {
+			log.Fatal(err)
+		}
 	}()
 
 	return nil
