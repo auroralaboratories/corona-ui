@@ -2,5 +2,31 @@
 window:
   width:  50%
   height: 50%
-  # position: center
-  monitor: 1
+  transparent: true
+
+  # background:
+  #   red:   number(0-255)
+  #   green: number(0-255)
+  #   blue:  number(0-255)
+  #   alpha: number(0-255)
+  # bounds:
+  #   top:    number | percent
+  #   right:  number | percent
+  #   bottom: number | percent
+  #   left:   number | percent
+  # frame:       true | false
+  # height:      number | percent
+  # monitor:     number
+  # position:    "center" | "mouse" | "center_always" | "center_parent"
+  # reserve:     true | false
+  # resizable:   true | false
+  # shaped:      true | false
+  # stacking:    "modal" | "above" | "below"
+  # transparent: true | false
+  # type:        "normal" | "dialog" | "menu" | "toolbar" | "splashscreen" |
+  #                  "tooltip" | "notification" | "combo" | "dnd" |
+  #                  "utility" | "dock" | "desktop" | "dropdown_menu" |
+  #                  "popup_menu"
+  # width:       number | percent
+  # x:           number | percent
+  # y:           number | percent

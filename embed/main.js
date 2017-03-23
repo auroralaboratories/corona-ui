@@ -5,6 +5,6 @@ bindings:
 ---
 "use strict";
 
-var corona = {
+window.corona = {
     version: '{{ .bindings.corona.version }}',
 };

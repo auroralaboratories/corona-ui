@@ -113,7 +113,12 @@ func main() {
 		} else {
 			window := NewWindow(&server)
 			server.Window = window
-			window.URI = server.GetURL()
+
+			if uri := c.Args().Get(1); uri == `` {
+				window.URI = server.GetURL()
+			} else {
+				window.URI = uri
+			}
 
 			if err := window.Initialize(&config.Window); err == nil {
 				if err := window.Show(); err != nil {
