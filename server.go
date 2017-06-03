@@ -42,7 +42,7 @@ func (self *Server) Serve() error {
 
 	// URLs under "/corona/{!api}*" are handled by the embedded filesystem
 	appRenderer.SetMounts([]diecast.Mount{
-		{
+		&diecast.FileMount{
 			MountPoint: `/corona`,
 			FileSystem: embedFS,
 		},
